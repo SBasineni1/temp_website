@@ -6,6 +6,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 export interface MountArgs {
   canvasEl: HTMLCanvasElement;
   onPropClick?: (key: string) => void;
+  onNoWebGL?: () => void;
 }
 
 type Vec3Coords = { x: number; y: number; z: number };
@@ -14,6 +15,7 @@ type FaceRotation = { rotY: number; rotX: number };
 export class GlobeEngine {
   canvasEl!: HTMLCanvasElement;
   onPropClick?: (key: string) => void;
+  onNoWebGL?: () => void;
 
   _destroyed = false;
   _noWebGL = false;
@@ -46,9 +48,10 @@ export class GlobeEngine {
   hitTargets: { key: string; mesh: THREE.Mesh }[] = [];
   globeHit!: THREE.Mesh; // invisible sphere over the earth, for wheel-zoom hit tests
 
-  mount({ canvasEl, onPropClick }: MountArgs): void {
+  mount({ canvasEl, onPropClick, onNoWebGL }: MountArgs): void {
     this.canvasEl = canvasEl;
     this.onPropClick = onPropClick;
+    this.onNoWebGL = onNoWebGL;
     this.hitTargets = [];
 
     this._destroyed = false;
@@ -78,7 +81,10 @@ export class GlobeEngine {
     window.addEventListener('resize', this.onResize);
 
     this.initThree();
-    if (this._noWebGL) return;
+    if (this._noWebGL) {
+      this.onNoWebGL?.();
+      return;
+    }
     this.addDrag();
     this.onResize();
     this.animate();

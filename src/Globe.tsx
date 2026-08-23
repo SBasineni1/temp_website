@@ -64,6 +64,9 @@ const CARDS: Record<string, Card> = {
 export default function Globe() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [openCard, setOpenCard] = useState<string | null>(null);
+  // WebGL blocked (Firefox resistFingerprinting, blocklisted drivers, etc.):
+  // swap the canvas for a pre-rendered still of the same scene
+  const [noWebGL, setNoWebGL] = useState(false);
   // decided once at mount: phones get a plain text hero, no 3D at all - the
   // engine chunk and models are never even downloaded there
   const [isMobile] = useState(() => window.matchMedia('(max-width: 720px)').matches);
@@ -78,7 +81,7 @@ export default function Globe() {
     import('./globeEngine').then((mod) => {
       if (cancelled) return;
       const e = new mod.GlobeEngine();
-      e.mount({ canvasEl, onPropClick: (key) => setOpenCard(key) });
+      e.mount({ canvasEl, onPropClick: (key) => setOpenCard(key), onNoWebGL: () => setNoWebGL(true) });
       engine = e;
     });
     return () => { cancelled = true; engine?.unmount(); };
@@ -88,7 +91,8 @@ export default function Globe() {
 
   return (
     <section className="globe-sticky" style={{ position: 'relative', width: '100%', overflow: 'hidden' }}>
-      {!isMobile && <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }} />}
+      {!isMobile && !noWebGL && <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }} />}
+      {noWebGL && <img src="/globe-fallback.webp" alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'right center' }} />}
 
       {/* HERO */}
       <div className="hero-panel" style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: 'min(560px,50%)', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 0 0 clamp(24px,5vw,72px)', zIndex: 10, pointerEvents: 'none' }}>

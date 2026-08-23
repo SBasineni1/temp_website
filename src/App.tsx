@@ -350,6 +350,7 @@ const POSTS: Post[] = [
       { img: '/blog/forest-lidar.jpg' },
       "The longer game for us is a digital twin of the Finger Lakes: a full 3D copy of the gorges, shorelines, and forests that you can revisit and compare season over season.",
       'The build is still in progress, but we are excited for the results.',
+      { img: '/projects/hexapod-leg.png' },
     ],
     links: [
       { label: 'Cornell Physical Intelligence', href: 'https://cornellphysicalintelligence.com/' },
@@ -501,6 +502,23 @@ const MEMBER_COUNT = new Set(MEMBERS.filter((m) => m.role !== 'Faculty Advisor')
 // draggable "ball pit" of alumni destination logos. Physics state lives outside
 // React - balls render once and every frame writes transforms directly, same
 // reasoning as the globe engine's rAF loop.
+function CopyEmailButton({ label }: { label: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        navigator.clipboard.writeText('cugeodata@cornell.edu');
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }}
+      style={{ display: 'inline-block', padding: '13px 28px', borderRadius: 999, border: 0, cursor: 'pointer', background: '#086727', color: '#eaf2ee', fontWeight: 700, fontSize: 17, fontFamily: "'Resiple',sans-serif" }}
+    >
+      {copied ? 'Copied cugeodata@cornell.edu' : label}
+    </button>
+  );
+}
+
 function AlumniPit({ alumni }: { alumni: typeof ALUMNI }) {
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -973,7 +991,7 @@ export default function App() {
           <div style={{ marginTop: 48 }}>
             {POSTS.filter((post) => postFilter === 'all' || post.kind === postFilter).map((post, i) => (
               <article key={post.slug} style={i === 0 ? undefined : { borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: 44, paddingTop: 44 }}>
-                <a href={`#/posts/${post.slug}`} className="post-link" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) clamp(130px,30vw,300px)', gap: 'clamp(18px,3.5vw,44px)', alignItems: 'center' }}>
+                <a href={`#/posts/${post.slug}`} className="post-link post-row" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) clamp(130px,30vw,300px)', gap: 'clamp(18px,3.5vw,44px)', alignItems: 'center' }}>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px 8px', fontFamily: "'Resiple',sans-serif", fontSize: 12, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#7c909b' }}>
                       <span style={{ border: `1px solid ${post.kind === 'project' ? '#4fae7d' : '#dcbe32'}`, color: post.kind === 'project' ? '#4fae7d' : '#dcbe32', borderRadius: 999, padding: '2px 10px', fontSize: 10.5 }}>{post.kind === 'project' ? 'Project' : 'Blog'}</span>
@@ -1013,12 +1031,12 @@ export default function App() {
           <h2 style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 700, fontSize: 'clamp(36px,4.8vw,60px)', letterSpacing: '-0.02em', lineHeight: 1.02, margin: '18px 0 0' }}>Sponsorship</h2>
           <p style={{ fontSize: 17, lineHeight: 1.65, color: '#a9bcc6', maxWidth: 620, margin: '26px 0 0' }}>Every instrument we field, from sensors and sondes to six-legged robots, is designed, built, and broken in by students. Sponsors are what keep the hardware in the water and the team in waders.</p>
           <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 34 }}>
-            <a href="mailto:cugeodata@cornell.edu?subject=Sponsoring%20GeoData" style={{ display: 'inline-block', padding: '13px 28px', borderRadius: 999, background: '#086727', color: '#eaf2ee', fontWeight: 700, fontSize: 17, fontFamily: "'Resiple',sans-serif" }}>Become a sponsor</a>
+            <CopyEmailButton label="Become a sponsor" />
             <a href={SPONSOR_PACKET_PDF} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', padding: '13px 28px', borderRadius: 999, border: '1px solid rgba(255,255,255,0.18)', color: '#e6ecf0', fontWeight: 700, fontSize: 17, fontFamily: "'Resiple',sans-serif" }}>Download the packet (PDF)</a>
           </div>
 
           {/* PACKET BOARD */}
-          <div className="team-photo-frame" style={{ padding: 14, border: '2px solid #086727', boxShadow: '10px 10px 0 rgba(8,103,39,0.35)', marginTop: 64 }}>
+          <div className="team-photo-frame packet-board" style={{ padding: 14, border: '2px solid #086727', boxShadow: '10px 10px 0 rgba(8,103,39,0.35)', marginTop: 64 }}>
             <object data={`${SPONSOR_PACKET_PDF}#view=FitH`} type="application/pdf" aria-label="GeoData sponsorship packet" style={{ display: 'block', width: '100%', height: 'min(75vh, 780px)', background: '#12181e' }}>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, height: '100%', padding: 24, textAlign: 'center' }}>
                 <p style={{ color: '#a9bcc6', margin: 0, maxWidth: 420, lineHeight: 1.6 }}>Your browser doesn't show PDFs inline, so grab the packet directly instead.</p>
@@ -1057,7 +1075,7 @@ export default function App() {
               <AlumniPit alumni={ALUMNI} />
             </div>
             <div style={{ marginTop: 36 }}>
-              <a href="mailto:cugeodata@cornell.edu" style={{ display: 'inline-block', padding: '13px 28px', borderRadius: 999, background: '#086727', color: '#eaf2ee', fontWeight: 700, fontSize: 17, fontFamily: "'Resiple',sans-serif" }}>Contact us for more info</a>
+              <CopyEmailButton label="Contact us for more info" />
             </div>
           </div>
         </div>

@@ -85,6 +85,16 @@ a:hover {
 }
 
 @media (max-width: 720px) {
+  /* inline PDF viewers are unreliable on phones; the download button covers it */
+  .packet-board {
+    display: none !important;
+  }
+
+  /* stack post rows so text isn't squeezed beside the thumbnail */
+  .post-row {
+    grid-template-columns: 1fr !important;
+  }
+
   .site-header {
     padding: 10px 12px !important;
   }

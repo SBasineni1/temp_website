@@ -751,8 +751,8 @@ function SensorChart({ label, unit, points }: { label: string; unit: string; poi
 // one card per egg. Ids are the slot names /api/aqi assigns in EGG_SERIAL order,
 // so adding an egg = append its serial to EGG_SERIAL on the server + an entry here.
 const EGGS = [
-  { id: 'egg1', name: 'Air Quality Egg 1', location: 'Snee Hall roof · Ithaca, NY', blurb: 'An Air Quality Egg mounted on top of Snee Hall, sampling the air over campus around the clock. The last 24 hours, averaged into 15-minute readings.' },
-  { id: 'egg2', name: 'Air Quality Egg 2', location: 'The ELL · Cornell', blurb: 'An indoor egg keeping tabs on the lab itself: CO2, particulates, and how much the DGX Spark is actually warming the room. The last 24 hours, averaged into 15-minute readings.' },
+  { id: 'egg1', name: 'Air Quality Egg (Snee Hall)', location: 'Snee Hall roof · Ithaca, NY', blurb: 'An Air Quality Egg mounted on top of Snee Hall, sampling the air over campus around the clock. The last 24 hours, averaged into 15-minute readings.' },
+  { id: 'egg2', name: 'Air Quality Egg (ELL)', location: 'The ELL · Cornell', blurb: 'An indoor egg keeping tabs on the lab itself: CO2, particulates, and how much the DGX Spark is actually warming the room. The last 24 hours, averaged into 15-minute readings.' },
 ];
 
 function EggCharts({ series }: { series: { key: string; points: EggPoint[] }[] }) {

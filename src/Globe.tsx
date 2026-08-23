@@ -64,13 +64,13 @@ const CARDS: Record<string, Card> = {
 export default function Globe() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [openCard, setOpenCard] = useState<string | null>(null);
-  // decided once at mount: phones get a plain text hero, no 3D at all — the
+  // decided once at mount: phones get a plain text hero, no 3D at all - the
   // engine chunk and models are never even downloaded there
   const [isMobile] = useState(() => window.matchMedia('(max-width: 720px)').matches);
 
   useEffect(() => {
     if (isMobile) return;
-    // dynamic import keeps three.js out of the initial bundle — the hero copy
+    // dynamic import keeps three.js out of the initial bundle - the hero copy
     // paints immediately and the globe streams in behind it
     let engine: { unmount(): void } | undefined;
     let cancelled = false;

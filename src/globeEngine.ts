@@ -121,7 +121,7 @@ export class GlobeEngine {
     const down = (e: PointerEvent): void => {
       pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (pointers.size === 2) { dragging = false; pinchDist = pinchSpan(); return; }
-      // only touches/clicks that start on the globe grab it — elsewhere the
+      // only touches/clicks that start on the globe grab it - elsewhere the
       // canvas is inert background and scrolling stays untouched
       if (!overGlobe(e)) return;
       dragging = true; moved = 0; el.style.cursor = 'grabbing'; lx = e.clientX; ly = e.clientY;
@@ -158,7 +158,7 @@ export class GlobeEngine {
     // hero still scrolls the page normally (trackpad pinch arrives as
     // ctrl+wheel, so it works too)
     const wheel = (e: WheelEvent): void => {
-      // on mobile the globe fills most of the hero — let the wheel scroll the
+      // on mobile the globe fills most of the hero - let the wheel scroll the
       // page there; pinch (two-pointer) zoom still works
       if (this.isMobile) return;
       if (castFrom(e).intersectObject(this.globeHit, false).length === 0) return;
@@ -250,7 +250,7 @@ export class GlobeEngine {
     scene.add(stars);
     this.stars = stars;
 
-    // empty satellite rig — the GLB is loaded into `body` by loadModels
+    // empty satellite rig - the GLB is loaded into `body` by loadModels
     const sat = new THREE.Group();
     const body = new THREE.Group();
     sat.add(body);
@@ -271,7 +271,7 @@ export class GlobeEngine {
   loadModels(group: THREE.Group, R: number): void {
     const loader = new GLTFLoader();
     // some exported models carry non-finite node transforms, which poison both
-    // bounds measurement and rendering — repair them, then fit normally
+    // bounds measurement and rendering - repair them, then fit normally
     const finite3 = (p: { x: number; y: number; z: number }): boolean =>
       isFinite(p.x) && isFinite(p.y) && isFinite(p.z);
     const fit = (obj: THREE.Object3D, targetR: number): THREE.Group => {
@@ -290,7 +290,7 @@ export class GlobeEngine {
       return wrap;
     };
     // skeleton placeholder so the hero never shows empty space while the GLB
-    // downloads — a dim shaded sphere at the earth's final 0.571 surface radius
+    // downloads - a dim shaded sphere at the earth's final 0.571 surface radius
     const placeholder = new THREE.Mesh(
       new THREE.SphereGeometry(0.571, 48, 32),
       new THREE.MeshStandardMaterial({ color: 0x16222e, roughness: 0.9 }),
@@ -304,7 +304,7 @@ export class GlobeEngine {
       // spin the model so its painted continents line up with the latLon math
       earth.rotation.y = 0.7;
       group.add(earth);
-      // the satellite and clocktower are secondary — start them only after the
+      // the satellite and clocktower are secondary - start them only after the
       // earth is up so they never compete with it for bandwidth on mobile
       this.loadSecondary(loader, group, fit);
     });
@@ -321,7 +321,7 @@ export class GlobeEngine {
     });
     loader.load('/models/clocktower.glb', (gltf) => {
       // the export bundles dozens of untextured near-black meshes that render
-      // as a brown blob around the tower — drop them BEFORE fitting so the
+      // as a brown blob around the tower - drop them BEFORE fitting so the
       // bounds/centering come from the real textured tower only
       const junk: THREE.Object3D[] = [];
       gltf.scene.traverse((o) => {
@@ -339,7 +339,7 @@ export class GlobeEngine {
       const grounded = new THREE.Box3().setFromObject(tower);
       tower.position.y = -grounded.min.y;
       g.add(tower);
-      // generous invisible click target — the tower itself is only a few px
+      // generous invisible click target - the tower itself is only a few px
       // wide on screen (raycaster ignores the visible flag)
       const hit = new THREE.Mesh(new THREE.SphereGeometry(0.09), new THREE.MeshBasicMaterial());
       hit.visible = false;

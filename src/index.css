@@ -64,6 +64,16 @@ a:hover {
   color: #84d3ab;
 }
 
+/* headline links (project cards, post feed): inherit the heading color, tint
+   whole block on hover */
+.post-link {
+  color: inherit;
+}
+
+.post-link:hover {
+  color: #84d3ab;
+}
+
 ::selection {
   background: #086727;
   color: #e6ecf0;
@@ -81,11 +91,20 @@ a:hover {
 
   .site-nav {
     gap: 10px !important;
-    font-size: 14px !important;
+    font-size: 13px !important;
   }
 
+  /* links collapse into the burger menu on phones */
   .site-nav-links {
-    gap: 12px !important;
+    display: none !important;
+  }
+
+  .nav-burger {
+    display: inline-flex !important;
+  }
+
+  .nav-menu {
+    display: flex !important;
   }
 
   .logo-link {
@@ -98,7 +117,7 @@ a:hover {
   }
 
   /* measured: the wordmark (95px) pushes total header content to 414px,
-     wider than any phone — the hero h1 right below repeats the name anyway */
+     wider than any phone - the hero h1 right below repeats the name anyway */
   .logo-text {
     display: none !important;
   }
@@ -114,7 +133,7 @@ a:hover {
     font-size: 13px !important;
   }
 
-  /* no globe on mobile — the hero text centers in the full-height section so
+  /* no globe on mobile - the hero text centers in the full-height section so
      the projects below stay off-screen until the user scrolls */
   .hero-panel {
     width: 100% !important;

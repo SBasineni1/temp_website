@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 import express from 'express';
 
 // serves dist/ and proxies the Air Quality Egg API so the key stays server-side.
@@ -41,6 +43,21 @@ app.get('/api/aqi', async (_req, res) => {
     }
     res.status(502).json({ error: String(err) });
   }
+});
+
+// serve the .br/.gz siblings scripts/compress.mjs emits at build time
+const DIST = path.resolve('dist');
+const COMPRESSIBLE = /\.(?:js|css|html|svg|json|glb)$/;
+app.use((req, res, next) => {
+  if ((req.method !== 'GET' && req.method !== 'HEAD') || !COMPRESSIBLE.test(req.path)) return next();
+  const enc = req.acceptsEncodings('br', 'gzip');
+  if (!enc) return next();
+  const file = path.join(DIST, req.path) + (enc === 'br' ? '.br' : '.gz');
+  if (!file.startsWith(DIST + path.sep) || !existsSync(file)) return next();
+  res.set('content-encoding', enc);
+  res.set('vary', 'accept-encoding');
+  res.type(path.extname(req.path));
+  res.sendFile(file);
 });
 
 app.use(express.static('dist', { etag: true }));

@@ -41,9 +41,12 @@ html,
 body {
   margin: 0;
   padding: 0;
-  background: #080b0f;
+  background: #0e141c;
   color: #e6ecf0;
   font-family: 'Resiple', system-ui, sans-serif;
+  /* Resiple ships a broken "M"+"1" kern pair that draws the 1 under the M
+     ("PM10" renders as "PMO"), so kerning stays off site-wide */
+  font-kerning: none;
   -webkit-font-smoothing: antialiased;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
@@ -56,7 +59,7 @@ img {
 }
 
 a {
-  color: #086727;
+  color: #4fae7d;
   text-decoration: none;
 }
 
@@ -74,9 +77,56 @@ a:hover {
   color: #84d3ab;
 }
 
+/* member contact overlay: links tint on hover (the LinkedIn base color lives
+   here as a class - an inline color would beat the :hover rule) */
+.member-linkedin {
+  color: #a9bcc6;
+}
+
+.member-flip a {
+  transition: color 0.15s;
+}
+
+.member-flip a:hover {
+  color: #84d3ab;
+}
+
+summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+summary::-webkit-details-marker {
+  display: none;
+}
+
+.chev {
+  font-size: 1.35em;
+  line-height: 1;
+}
+
+.chev::before {
+  content: '+';
+}
+
+details[open] > summary .chev::before {
+  content: '−';
+}
+
 ::selection {
-  background: #086727;
-  color: #e6ecf0;
+  background: #4fae7d;
+  color: #0e141c;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .balloon-bob {
+    animation: balloon-bob 3.6s ease-in-out infinite;
+  }
+
+  @keyframes balloon-bob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+  }
 }
 
 .globe-sticky {

@@ -5,7 +5,6 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 // Globe.tsx; has no React dependency itself.
 export interface MountArgs {
   canvasEl: HTMLCanvasElement;
-  onPropClick?: (key: string) => void;
   onNoWebGL?: () => void;
 }
 
@@ -14,7 +13,6 @@ type FaceRotation = { rotY: number; rotX: number };
 
 export class GlobeEngine {
   canvasEl!: HTMLCanvasElement;
-  onPropClick?: (key: string) => void;
   onNoWebGL?: () => void;
 
   _destroyed = false;
@@ -44,15 +42,11 @@ export class GlobeEngine {
   stars!: THREE.Points<THREE.BufferGeometry, THREE.PointsMaterial>;
   sat!: THREE.Group;
   satBody!: THREE.Group;
-  // invisible click spheres, one per planted prop; filled as models load
-  hitTargets: { key: string; mesh: THREE.Mesh }[] = [];
-  globeHit!: THREE.Mesh; // invisible sphere over the earth, for wheel-zoom hit tests
+  globeHit!: THREE.Mesh; // invisible sphere over the earth, for drag/wheel hit tests
 
-  mount({ canvasEl, onPropClick, onNoWebGL }: MountArgs): void {
+  mount({ canvasEl, onNoWebGL }: MountArgs): void {
     this.canvasEl = canvasEl;
-    this.onPropClick = onPropClick;
     this.onNoWebGL = onNoWebGL;
-    this.hitTargets = [];
 
     this._destroyed = false;
     this.time = 0;
@@ -102,7 +96,7 @@ export class GlobeEngine {
     const el = this.canvasEl;
     el.style.cursor = 'grab';
     el.style.touchAction = 'pan-y';
-    let dragging = false, lx = 0, ly = 0, moved = 0, pinchDist = 0;
+    let dragging = false, lx = 0, ly = 0, pinchDist = 0;
     const pointers = new Map<number, { x: number; y: number }>();
     const pinchSpan = (): number => {
       const [a, b] = [...pointers.values()];
@@ -116,12 +110,6 @@ export class GlobeEngine {
       ray.setFromCamera(ndc, this.camera);
       return ray;
     };
-    const propAt = (e: { clientX: number; clientY: number }): string | null => {
-      if (!this.hitTargets.length) return null;
-      const hit = castFrom(e).intersectObjects(this.hitTargets.map((t) => t.mesh), false)[0];
-      if (!hit) return null;
-      return this.hitTargets.find((t) => t.mesh === hit.object)?.key ?? null;
-    };
     const overGlobe = (e: { clientX: number; clientY: number }): boolean =>
       castFrom(e).intersectObject(this.globeHit, false).length > 0;
     const down = (e: PointerEvent): void => {
@@ -130,32 +118,27 @@ export class GlobeEngine {
       // only touches/clicks that start on the globe grab it - elsewhere the
       // canvas is inert background and scrolling stays untouched
       if (!overGlobe(e)) return;
-      dragging = true; moved = 0; el.style.cursor = 'grabbing'; lx = e.clientX; ly = e.clientY;
+      dragging = true; el.style.cursor = 'grabbing'; lx = e.clientX; ly = e.clientY;
     };
     const move = (e: PointerEvent): void => {
       const p = pointers.get(e.pointerId);
       if (p) { p.x = e.clientX; p.y = e.clientY; }
       if (pointers.size === 2) {
         const d = pinchSpan();
-        if (pinchDist > 0) this.zoom = Math.max(1, Math.min(3, this.zoom * d / pinchDist));
+        if (pinchDist > 0) this.zoom = Math.max(0.2, Math.min(5, this.zoom * d / pinchDist));
         pinchDist = d;
         return;
       }
       if (!dragging) {
-        if (e.target === el) el.style.cursor = propAt(e) ? 'pointer' : overGlobe(e) ? 'grab' : 'default';
+        if (e.target === el) el.style.cursor = overGlobe(e) ? 'grab' : 'default';
         return;
       }
-      moved += Math.abs(e.clientX - lx) + Math.abs(e.clientY - ly);
       this.userYaw += (e.clientX - lx) * 0.006;
       this.userPitch = Math.max(-1.1, Math.min(1.1, this.userPitch + (e.clientY - ly) * 0.006));
       lx = e.clientX; ly = e.clientY;
     };
     const up = (e: PointerEvent): void => {
       pointers.delete(e.pointerId);
-      if (dragging && moved < 6 && e.target === el && this.onPropClick) {
-        const key = propAt(e);
-        if (key) this.onPropClick(key);
-      }
       dragging = false;
       el.style.cursor = 'grab';
     };
@@ -169,7 +152,7 @@ export class GlobeEngine {
       if (this.isMobile) return;
       if (castFrom(e).intersectObject(this.globeHit, false).length === 0) return;
       e.preventDefault();
-      this.zoom = Math.max(1, Math.min(3, this.zoom * Math.exp(-e.deltaY * 0.0015)));
+      this.zoom = Math.max(0.2, Math.min(5, this.zoom * Math.exp(-e.deltaY * 0.0015)));
     };
     el.addEventListener('pointerdown', down);
     window.addEventListener('pointermove', move);
@@ -196,17 +179,6 @@ export class GlobeEngine {
   faceRot(lat: number, lon: number): FaceRotation {
     const v = this.latLon(lat, lon, 1);
     return { rotY: -Math.atan2(v.x, v.z), rotX: Math.atan2(v.y, Math.sqrt(v.x*v.x + v.z*v.z)) };
-  }
-
-  // tangent frame group planted on the globe surface
-  surfaceGroup(parent: THREE.Object3D, lat: number, lon: number, radius: number): THREE.Group {
-    const g = new THREE.Group();
-    const p = this.latLon(lat, lon, radius);
-    g.position.set(p.x, p.y, p.z);
-    const normal = new THREE.Vector3(p.x, p.y, p.z).normalize();
-    g.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal); // local +Y -> outward normal
-    parent.add(g);
-    return g;
   }
 
   initThree(): void {
@@ -265,7 +237,7 @@ export class GlobeEngine {
 
     this.loadModels(group, 1);
 
-    // aim ~8° south of the clocktower so it's framed above center at a
+    // aim ~8° south of Ithaca so it's framed above center at a
     // 3/4 angle rather than seen top-down
     const aim = this.faceRot(34.25, -104.79);
     this.baseRotY = aim.rotY;
@@ -310,48 +282,12 @@ export class GlobeEngine {
       // spin the model so its painted continents line up with the latLon math
       earth.rotation.y = 0.7;
       group.add(earth);
-      // the satellite and clocktower are secondary - start them only after the
-      // earth is up so they never compete with it for bandwidth on mobile
-      this.loadSecondary(loader, group, fit);
-    });
-  }
-
-  loadSecondary(
-    loader: GLTFLoader,
-    group: THREE.Group,
-    fit: (obj: THREE.Object3D, targetR: number) => THREE.Group,
-  ): void {
-    loader.load('/models/satellite.glb', (gltf) => {
-      this.satBody.clear();
-      this.satBody.add(fit(gltf.scene, 0.33));
-    });
-    loader.load('/models/clocktower.glb', (gltf) => {
-      // the export bundles dozens of untextured near-black meshes that render
-      // as a brown blob around the tower - drop them BEFORE fitting so the
-      // bounds/centering come from the real textured tower only
-      const junk: THREE.Object3D[] = [];
-      gltf.scene.traverse((o) => {
-        const mesh = o as THREE.Mesh;
-        if (!(mesh as { isMesh?: boolean }).isMesh) return;
-        const mat = mesh.material;
-        if (Array.isArray(mat) || !(mat as THREE.MeshBasicMaterial).map) junk.push(mesh);
+      // the satellite is secondary - start it only after the earth is up so it
+      // never competes with it for bandwidth on mobile
+      loader.load('/models/satellite.glb', (g2) => {
+        this.satBody.clear();
+        this.satBody.add(fit(g2.scene, 0.33));
       });
-      junk.forEach((m) => m.parent?.remove(m));
-      // Ithaca on this earth model's painted geography (click-calibrated);
-      // 0.571 is the model's true surface radius after fit()
-      const g = this.surfaceGroup(group, 42.25, -104.79, 0.571);
-      const tower = fit(gltf.scene, 0.063);
-      // ground the base exactly on the surface point
-      const grounded = new THREE.Box3().setFromObject(tower);
-      tower.position.y = -grounded.min.y;
-      g.add(tower);
-      // generous invisible click target - the tower itself is only a few px
-      // wide on screen (raycaster ignores the visible flag)
-      const hit = new THREE.Mesh(new THREE.SphereGeometry(0.09), new THREE.MeshBasicMaterial());
-      hit.visible = false;
-      hit.position.y = 0.06;
-      g.add(hit);
-      this.hitTargets.push({ key: 'home', mesh: hit });
     });
   }
 

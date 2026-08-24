@@ -1,5 +1,5 @@
-// emit .br and .gz next to every compressible dist file so the static server
-// (sirv --brotli --gzip) can serve them precompressed
+// emit .br and .gz next to every compressible dist file so server.mjs can
+// serve them precompressed
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';

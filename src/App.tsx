@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Globe from './Globe';
 import membersData from './members.json';
 
@@ -29,8 +29,8 @@ interface Project {
 const PROJECTS: Project[] = [
   {
     slug: '3d-printed-weather-stations',
-    tag: 'Tech · Air',
-    tagColor: '#8f0c3a',
+    tag: 'Tech x Air',
+    tagColor: '#c92556',
     title: '3D Printed Weather Stations',
     body: "Weather stations printed to UCAR's open-source 3DPAWS design: temperature, pressure, humidity, wind and rain for a fraction of commercial cost. Built this summer, deploying around Cayuga Lake this fall.",
     photo: '/projects/sensors.png',
@@ -48,7 +48,7 @@ const PROJECTS: Project[] = [
     tag: 'Air',
     tagColor: '#6d9dcd',
     title: 'Atmospheric Tethersonde',
-    body: 'An affordable, portable profiler for the lowest 500 feet of the atmosphere. We built it to get high-resolution observations of boundary-layer and lake-effect weather.',
+    body: 'An affordable, portable atmospheric profiler. We built it to get high-resolution observations of boundary-layer and lake-effect weather.',
     photo: '/projects/tethersonde.jpeg',
     photoAspect: '4/5',
     photoPosition: '57% 50%',
@@ -56,7 +56,7 @@ const PROJECTS: Project[] = [
   {
     slug: 'nisar-ground-truthing',
     tag: 'Rock',
-    tagColor: '#914724',
+    tagColor: '#c1703f',
     title: 'NISAR Ground-Truthing',
     body: "Five soil-moisture nodes at the Game Farm site check NASA's NISAR satellite against what's actually in the dirt.",
     photo: '/projects/nisar.png',
@@ -65,15 +65,15 @@ const PROJECTS: Project[] = [
   },
   {
     slug: 'lidar-hexapod',
-    tag: 'Tech · CUPI Partnership',
-    tagColor: '#8f0c3a',
+    tag: 'Tech x CUPI Partnership',
+    tagColor: '#c92556',
     title: 'LiDAR Hexapod',
     body: 'A LiDAR attachment for a six-legged robot, built jointly with Cornell Physical Intelligence. Paired with UAV LiDAR, it is our path to digital twins of the Finger Lakes.',
     photo: '/projects/hexapod.png',
   },
   {
     tag: 'Coming soon',
-    tagColor: '#8f0c3a',
+    tagColor: '#c92556',
     title: 'Drone Photogrammetry',
     body: 'Coming soon: repeatable aerial surveys of Finger Lakes shorelines. Overlapping drone passes stitched into 3D scans, to make erosion measurable and give our sensor data terrain context.',
     photo: '/projects/drone.webp',
@@ -81,23 +81,22 @@ const PROJECTS: Project[] = [
 ];
 
 const PARTNERS = [
-  'Cornell College of Engineering',
+  'Duffield College of Engineering',
   'Dept. of Earth & Atmospheric Sciences',
-  'Emergent Climate Risk Lab',
   'Cornell Project Team Program',
 ];
 
 const SUBTEAM_COLORS: Record<string, string> = {
   Leadership: '#4fae7d',
   Air: '#6d9dcd',
-  Water: '#094295',
-  Rock: '#914724',
-  Data: '#5d177f',
-  Tech: '#8f0c3a',
+  Water: '#2e6fc9',
+  Rock: '#c1703f',
+  Data: '#8b3fbf',
+  Tech: '#c92556',
   Business: '#dcbe32',
 };
 
-// corner badges, sourced from assets/ - one per subteam
+// corner badges in public/badges/ - one per subteam
 const SUBTEAM_BADGES: Record<string, string> = {
   Air: '/badges/air.png',
   Water: '/badges/water.png',
@@ -277,11 +276,11 @@ interface Post {
   dek: string; // the one-liner under the headline
   photo?: string; // path under /public; omitted shows a placeholder
   body: (string | { img: string; max?: number })[]; // a string per paragraph; { img } entries render as framed inline photos, max caps their width in px
-  links: { label: string; href: string }[]; // '#' hrefs are placeholders - swap for real ones
+  links: { label: string; href: string }[];
   credit?: string; // photo credit line, shown under the links
 }
 
-// newest first. Paragraphs marked "Snippet" are templates - replace with real write-ups.
+// newest first
 const POSTS: Post[] = [
   {
     slug: 'summer-spotlight-orion-hoch',
@@ -337,8 +336,8 @@ const POSTS: Post[] = [
     slug: 'lidar-hexapod',
     kind: 'project',
     date: 'August 2026',
-    tag: 'Tech · CUPI',
-    tagColor: '#8f0c3a',
+    tag: 'Tech x CUPI',
+    tagColor: '#c92556',
     title: 'LiDAR Hexapod',
     dek: 'An official partnership with Cornell University Physical Intelligence to build a self-navigating data collection hexapod for the earth sciences, starting with LiDAR.',
     photo: '/projects/hexapod.png',
@@ -407,8 +406,8 @@ const POSTS: Post[] = [
     slug: '3d-printed-weather-stations',
     kind: 'project',
     date: 'March 2026',
-    tag: 'Tech · Air',
-    tagColor: '#8f0c3a',
+    tag: 'Tech x Air',
+    tagColor: '#c92556',
     title: '3D Printed Weather Stations',
     dek: "Open-source weather stations printed to UCAR's 3DPAWS design, for about a tenth the price of the commercial version.",
     photo: '/projects/sensors.png',
@@ -424,7 +423,7 @@ const POSTS: Post[] = [
     kind: 'project',
     date: 'August 2025',
     tag: 'Rock',
-    tagColor: '#914724',
+    tagColor: '#c1703f',
     title: 'NISAR Ground-Truthing',
     dek: "Five soil-moisture nodes at the Game Farm site check NASA's NISAR satellite against what's actually in the dirt.",
     photo: '/projects/nisar.png',
@@ -442,26 +441,23 @@ const POSTS: Post[] = [
     tag: 'Air',
     tagColor: '#6d9dcd',
     title: 'Atmospheric Tethersonde',
-    dek: 'An affordable, portable profiler for the lowest 500 feet of the atmosphere, built for boundary-layer and lake-effect weather.',
+    dek: 'An affordable, portable atmospheric profiler, built for boundary-layer and lake-effect weather.',
     photo: '/projects/tethersonde.jpeg',
     body: [
-      'The tethersonde is an affordable, portable profiler for the lowest 500 feet of the atmosphere. We built it to get high-resolution observations of boundary-layer and lake-effect weather.',
+      'The tethersonde is an affordable, portable atmospheric profiler. We built it to get high-resolution observations of boundary-layer and lake-effect weather.',
     ],
     links: [
     ],
   },
 ];
 
-// sponsorship page - template amounts and perks, adjust to match the packet.
-// Alumni destination logos go in public/alumni/; entries without a logo render
-// as initials until the file lands.
-const SPONSOR_PACKET_PDF = '/sponsorship-packet.pdf'; // drop the packet in public/
+const SPONSOR_PACKET_PDF = '/sponsorship-packet.pdf';
 
 const TIERS = [
-  { name: 'Rock', color: '#914724', amount: '$500+', perks: ['Logo on our website', 'Decal on a soil-moisture node at the Game Farm site', 'Thank-you in the alumni newsletter'] },
-  { name: 'Water', color: '#2e6fc9', amount: '$1,500+', perks: ['Everything in Rock', 'Decal on a Cayuga Lake sensor station, photographed on deployment day', 'Team resume book', 'Social media feature from the field'] },
-  { name: 'Air', color: '#6d9dcd', amount: '$3,000+', perks: ['Everything in Water', 'Decal on the tethersonde, flown to 500 feet', 'Logo on team apparel', 'Job postings featured in the alumni newsletter', 'Info session or recruiting event with the team'] },
-  { name: 'Orbit', color: '#086727', amount: '$5,000+', perks: ['Everything in Air', 'Decal on the LiDAR hexapod robot and the survey drone', 'A sensor site around the lake named after you', 'First invite to demo day'] },
+  { name: 'Drizzle', color: '#84d3ab', amount: '$500+', perks: ['Logo on our website', 'Decal on a soil-moisture node at the Game Farm site', 'Thank-you in the alumni newsletter'] },
+  { name: 'Storm', color: '#6d9dcd', amount: '$1,500+', perks: ['Everything in Drizzle', 'Decal on a Cayuga Lake sensor station, photographed on deployment day', 'Team resume book', 'Social media feature from the field'] },
+  { name: 'Zephyr', color: '#c92556', amount: '$3,000+', perks: ['Everything in Storm', 'Decal on the tethersonde, flown to 500 feet', 'Logo on team apparel', 'Job postings featured in the alumni newsletter', 'Info session or recruiting event with the team'] },
+  { name: 'Supercell', color: '#8b3fbf', amount: '$5,000+', perks: ['Everything in Zephyr', 'Decal on the LiDAR hexapod robot and the survey drone', 'A sensor site around the lake named after you', 'First invite to demo day'] },
 ];
 
 const ALUMNI: { place: string; logo?: string }[] = [
@@ -481,9 +477,14 @@ const ALUMNI: { place: string; logo?: string }[] = [
   { place: 'UC Berkeley', logo: '/alumni/berkeley.png' },
   { place: 'Northwestern', logo: '/alumni/northwestern.png' },
   { place: 'Liberty Mutual', logo: '/alumni/liberty-mutual.png' },
+  { place: 'SpaceX', logo: '/alumni/spacex.png' },
+  { place: 'Yale', logo: '/alumni/yale.png' },
 ];
 
 const teamLabel = (s: string): string => (s === 'Leadership' ? s : `${s} Team`);
+
+// "Tech x Air" -> smaller x between team names
+const fmtTag = (tag: string) => tag.split(/( x )/).map((p, i) => (p === ' x ' ? <span key={i} style={{ fontSize: '0.72em' }}> x </span> : p));
 
 // renders **text** in post paragraphs as bold
 const emphasize = (text: string) =>
@@ -499,9 +500,6 @@ const SUBTEAM_COUNT = new Set(MEMBERS.map((m) => m.subteam)).size - 1; // Leader
 // double-counted; the faculty advisor isn't a student member
 const MEMBER_COUNT = new Set(MEMBERS.filter((m) => m.role !== 'Faculty Advisor').map((m) => m.email || m.name)).size;
 
-// draggable "ball pit" of alumni destination logos. Physics state lives outside
-// React - balls render once and every frame writes transforms directly, same
-// reasoning as the globe engine's rAF loop.
 function CopyEmailButton({ label }: { label: string }) {
   const [copied, setCopied] = useState(false);
   return (
@@ -519,6 +517,10 @@ function CopyEmailButton({ label }: { label: string }) {
   );
 }
 
+// draggable "ball pit" of alumni destination logos. Entries without a logo
+// render as initials. Physics state lives outside React - balls render once
+// and every frame writes transforms directly, same reasoning as the globe
+// engine's rAF loop.
 function AlumniPit({ alumni }: { alumni: typeof ALUMNI }) {
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -635,13 +637,13 @@ function AlumniPit({ alumni }: { alumni: typeof ALUMNI }) {
   }, []);
 
   return (
-    <div ref={wrapRef} style={{ position: 'relative', height: 'clamp(340px,48vw,500px)', overflow: 'hidden', touchAction: 'none', cursor: 'grab', background: '#0b1016' }}>
+    <div ref={wrapRef} style={{ position: 'relative', height: 'clamp(340px,48vw,500px)', overflow: 'hidden', touchAction: 'none', cursor: 'grab', background: '#121a23', WebkitTapHighlightColor: 'transparent', userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' }}>
       {alumni.map((a, i) => (
         <div key={i} title={a.place} style={{ position: 'absolute', top: 0, left: 0, transform: 'translate(-100vw,0)', borderRadius: 999, background: '#e6ecf0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', willChange: 'transform' }}>
           {a.logo ? (
             <img src={a.logo} alt={a.place} draggable={false} style={{ width: '68%', height: '68%', objectFit: 'contain', pointerEvents: 'none' }} />
           ) : (
-            <span style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 700, fontSize: 26, color: '#080b0f', pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}>{a.place.split(' ').map((w) => w[0]).join('').slice(0, 3)}</span>
+            <span style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 700, fontSize: 26, color: '#0e141c', pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}>{a.place.split(' ').map((w) => w[0]).join('').slice(0, 3)}</span>
           )}
         </div>
       ))}
@@ -686,13 +688,14 @@ function eggSeries(raw: unknown): { key: string; points: EggPoint[] }[] {
   return out;
 }
 
-// channels rendered in this order when present in the feed
-const EGG_CHANNELS: { key: string; label: string; unit: string; scale?: number }[] = [
-  { key: 'pm2p5', label: 'PM2.5', unit: 'µg/m³' },
-  { key: 'pm10p0', label: 'PM10', unit: 'µg/m³' },
-  { key: 'pm1p0', label: 'PM1.0', unit: 'µg/m³' },
+// channels rendered in this order when present in the feed. PM readings in clean
+// air sit near 0 and quantize in ~0.1 steps, so those charts pin the baseline to
+// 0 with a minimum y-span instead of autoscaling the noise to full height.
+const EGG_CHANNELS: { key: string; label: string; unit: string; scale?: number; y0?: number; minSpan?: number }[] = [
+  { key: 'pm2p5', label: 'PM2.5', unit: 'µg/m³', y0: 0, minSpan: 5 },
+  // pm10p0 isn't charted but still feeds the AQI badge via AQI_BP
+  { key: 'pm1p0', label: 'PM1.0', unit: 'µg/m³', y0: 0, minSpan: 5 },
   { key: 'co2', label: 'CO2', unit: 'ppm' },
-  { key: 'tvoc', label: 'TVOC', unit: 'ppb' },
   { key: 'no2', label: 'NO2', unit: 'ppb' },
   { key: 'o3', label: 'O3', unit: 'ppb' },
   { key: 'so2', label: 'SO2', unit: 'ppb' },
@@ -702,15 +705,43 @@ const EGG_CHANNELS: { key: string; label: string; unit: string; scale?: number }
   { key: 'pressure', label: 'Pressure', unit: 'hPa', scale: 0.01 }, // Egg reports Pa
 ];
 
+// US EPA AQI breakpoints [Clow, Chigh, Ilow, Ihigh] (2024 PM2.5 revision)
+const AQI_BP: Record<'pm2p5' | 'pm10p0', number[][]> = {
+  pm2p5: [[0, 9, 0, 50], [9.1, 35.4, 51, 100], [35.5, 55.4, 101, 150], [55.5, 125.4, 151, 200], [125.5, 225.4, 201, 300], [225.5, 325.4, 301, 500]],
+  pm10p0: [[0, 54, 0, 50], [55, 154, 51, 100], [155, 254, 101, 150], [255, 354, 151, 200], [355, 424, 201, 300], [425, 604, 301, 500]],
+};
+
+function aqiFrom(conc: number, bp: number[][]): number {
+  const [cl, ch, il, ih] = bp.find(([lo, hi]) => conc >= lo && conc <= hi) ?? bp[bp.length - 1];
+  return Math.round(il + ((Math.min(conc, ch) - cl) / (ch - cl)) * (ih - il));
+}
+
+const AQI_CATS: readonly (readonly [number, string, string])[] = [
+  [50, 'Good', '#00e400'],
+  [100, 'Moderate', '#ffff00'],
+  [150, 'Unhealthy for Sensitive Groups', '#ff7e00'],
+  [200, 'Unhealthy', '#ff0000'],
+  [300, 'Very Unhealthy', '#8f3f97'],
+  [Infinity, 'Hazardous', '#7e0023'],
+];
+const aqiCat = (aqi: number) => AQI_CATS.find(([max]) => aqi <= max)!;
+
+type Rating = (v: number) => readonly [number, string, string];
+const RATINGS: Record<string, Rating> = {
+  pm2p5: (v) => aqiCat(aqiFrom(v, AQI_BP.pm2p5)),
+};
+
 const fmtVal = (v: number) => (Math.abs(v) >= 100 ? Math.round(v).toLocaleString() : v.toFixed(1));
+// "PM2.5" -> PM₂.₅-style label; styled <sub>, since the custom fonts ship no subscript glyphs
+const subPM = (label: string) => (label.startsWith('PM') ? <>PM<sub style={{ fontSize: '0.72em' }}>{label.slice(2)}</sub></> : label);
 const fmtTime = (t: number) => new Date(t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
-function SensorChart({ label, unit, points }: { label: string; unit: string; points: EggPoint[] }) {
+function SensorChart({ label, unit, points, y0, minSpan, rating }: { label: string; unit: string; points: EggPoint[]; y0?: number; minSpan?: number; rating?: Rating }) {
   const [hover, setHover] = useState<number | null>(null);
   const vs = points.map((p) => p.v);
-  const min = Math.min(...vs);
+  const min = y0 ?? Math.min(...vs);
   const max = Math.max(...vs);
-  const span = max - min || 1;
+  const span = Math.max(max - min, minSpan ?? 0) || 1;
   const t0 = points[0].t;
   const t1 = points[points.length - 1].t;
   const tspan = t1 - t0 || 1;
@@ -729,14 +760,20 @@ function SensorChart({ label, unit, points }: { label: string; unit: string; poi
   };
 
   return (
-    <div style={{ background: '#0d131a', padding: '18px 18px 14px' }}>
+    <div style={{ background: '#141c26', padding: '18px 18px 14px' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-        <div style={{ fontFamily: "'Resiple',sans-serif", fontSize: 12, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#7c909b' }}>{label}</div>
+        <div style={{ fontFamily: "'Resiple',sans-serif", fontSize: 12, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#7c909b' }}>{subPM(label)}</div>
         {/* Resiple, not Manti: Manti Sans has no period glyph, so decimals render as tofu */}
         <div style={{ fontFamily: "'Resiple',sans-serif", fontWeight: 700, fontSize: 19, color: '#e6ecf0', whiteSpace: 'nowrap' }}>
           {fmtVal((hp ?? cur).v)} <span style={{ fontSize: 12, fontWeight: 400, color: '#7c909b' }}>{unit}</span>
         </div>
       </div>
+      {rating && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, fontFamily: "'Resiple',sans-serif", fontSize: 11.5, color: '#a9bcc6' }}>
+          <span style={{ width: 7, height: 7, borderRadius: 999, background: rating((hp ?? cur).v)[2], flexShrink: 0 }} />
+          {rating((hp ?? cur).v)[1]}
+        </div>
+      )}
       <div
         onPointerMove={onMove}
         onPointerLeave={() => setHover(null)}
@@ -751,9 +788,9 @@ function SensorChart({ label, unit, points }: { label: string; unit: string; poi
         </svg>
         {hp && (
           <>
-            <div style={{ position: 'absolute', left: `${X(hp)}%`, top: `${Y(hp)}%`, width: 8, height: 8, borderRadius: 999, background: '#4fae7d', border: '2px solid #0d131a', transform: 'translate(-50%,-50%)', pointerEvents: 'none' }} />
+            <div style={{ position: 'absolute', left: `${X(hp)}%`, top: `${Y(hp)}%`, width: 8, height: 8, borderRadius: 999, background: '#4fae7d', border: '2px solid #141c26', transform: 'translate(-50%,-50%)', pointerEvents: 'none' }} />
             <div style={{ position: 'absolute', left: `${Math.min(82, Math.max(18, X(hp)))}%`, bottom: '104%', transform: 'translateX(-50%)', background: '#1a2530', border: '1px solid rgba(255,255,255,0.12)', padding: '4px 10px', fontFamily: "'Resiple',sans-serif", fontSize: 11.5, color: '#c4d1d9', whiteSpace: 'nowrap', pointerEvents: 'none' }}>
-              {fmtVal(hp.v)} {unit} · {fmtTime(hp.t)}
+              {fmtVal(hp.v)} {unit} {fmtTime(hp.t)}
             </div>
           </>
         )}
@@ -769,24 +806,45 @@ function SensorChart({ label, unit, points }: { label: string; unit: string; poi
 // one card per egg. Ids are the slot names /api/aqi assigns in EGG_SERIAL order,
 // so adding an egg = append its serial to EGG_SERIAL on the server + an entry here.
 const EGGS = [
-  { id: 'egg1', name: 'Air Quality Egg (Snee Hall)', location: 'Snee Hall roof · Ithaca, NY', blurb: 'An Air Quality Egg mounted on top of Snee Hall, sampling the air over campus around the clock. The last 24 hours, averaged into 15-minute readings.' },
-  { id: 'egg2', name: 'Air Quality Egg (ELL)', location: 'The ELL · Cornell', blurb: 'An indoor egg keeping tabs on the lab itself: CO2, particulates, and how much the DGX Spark is actually warming the room. The last 24 hours, averaged into 15-minute readings.' },
+  { id: 'egg1', name: 'Snee Egg', location: 'Snee Hall roof' },
+  { id: 'egg2', name: 'ELL Egg', location: 'GeoData workbench' },
 ];
 
-function EggCharts({ series }: { series: { key: string; points: EggPoint[] }[] }) {
+function EggCharts({ series, unit }: { series: { key: string; points: EggPoint[] }[]; unit: 'C' | 'F' }) {
   const newest = Math.max(...series.map((s) => s.points[s.points.length - 1].t));
   const live = Date.now() - newest < 45 * 60_000;
   const charts = EGG_CHANNELS.map((c) => ({ ...c, series: series.find((s) => s.key === c.key) })).filter((c) => c.series);
+  // EPA AQI is defined on the 24h mean; take the worse of the PM2.5/PM10 sub-indices
+  const aqis = (['pm2p5', 'pm10p0'] as const).flatMap((k) => {
+    const s = series.find((x) => x.key === k);
+    return s ? [aqiFrom(s.points.reduce((a, p) => a + p.v, 0) / s.points.length, AQI_BP[k])] : [];
+  });
+  const aqi = aqis.length ? Math.max(...aqis) : null;
+  const cat = aqi != null ? aqiCat(aqi) : null;
   return (
     <div>
-      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '5px 14px', borderRadius: 999, border: `1px solid ${live ? '#4fae7d' : 'rgba(255,255,255,0.18)'}`, fontFamily: "'Resiple',sans-serif", fontSize: 12, letterSpacing: '0.1em', textTransform: 'uppercase', color: live ? '#4fae7d' : '#7c909b' }}>
-        <span style={{ width: 8, height: 8, borderRadius: 999, background: live ? '#4fae7d' : '#5f7078' }} />
-        {live ? 'Live' : 'Offline'} · updated {fmtTime(newest)}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '5px 14px', borderRadius: 999, border: `1px solid ${live ? '#4fae7d' : 'rgba(255,255,255,0.18)'}`, fontFamily: "'Resiple',sans-serif", fontSize: 12, letterSpacing: '0.1em', textTransform: 'uppercase', color: live ? '#4fae7d' : '#7c909b' }}>
+          <span style={{ width: 8, height: 8, borderRadius: 999, background: live ? '#4fae7d' : '#5f7078' }} />
+          {live ? 'Live' : 'Offline'} updated {fmtTime(newest)}
+        </div>
+        {aqi != null && cat && (
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '5px 14px', borderRadius: 999, border: '1px solid rgba(255,255,255,0.18)', fontFamily: "'Resiple',sans-serif", fontSize: 12, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#c4d1d9' }}>
+            <span style={{ width: 8, height: 8, borderRadius: 999, background: cat[2] }} />
+            US AQI {aqi} {cat[1]}
+          </div>
+        )}
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(280px,100%),1fr))', gap: 18, marginTop: 24 }}>
-        {charts.map((c) => (
-          <SensorChart key={c.key} label={c.label} unit={c.unit} points={c.scale ? c.series!.points.map((p) => ({ t: p.t, v: p.v * c.scale! })) : c.series!.points} />
-        ))}
+        {charts.map((c) => {
+          let points = c.scale ? c.series!.points.map((p) => ({ t: p.t, v: p.v * c.scale! })) : c.series!.points;
+          let chartUnit = c.unit;
+          if (c.key === 'temperature' && unit === 'F') {
+            points = points.map((p) => ({ t: p.t, v: (p.v * 9) / 5 + 32 }));
+            chartUnit = '°F';
+          }
+          return <SensorChart key={c.key} label={c.label} unit={chartUnit} points={points} y0={c.y0} minSpan={c.minSpan} rating={RATINGS[c.key]} />;
+        })}
       </div>
     </div>
   );
@@ -808,29 +866,52 @@ function SensorsFeed() {
     };
   }, []);
 
+  const [unit, setUnit] = useState<'C' | 'F'>('C');
+  // parsing the multi-MB feed is expensive - do it once per fetch, not per render
+  const parsed = useMemo(
+    () => Object.fromEntries(EGGS.map((egg) => [egg.id, state.status === 'ready' ? eggSeries(state.raw[egg.id]) : []])),
+    [state],
+  );
+
   return (
     <>
-      {EGGS.map((egg) => {
-        const series = state.status === 'ready' ? eggSeries(state.raw[egg.id]) : [];
-        return (
-          <div key={egg.id} style={{ background: '#0d131a', borderTop: '3px solid #6d9dcd', padding: 'clamp(20px,3.5vw,36px)', marginTop: 56 }}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '8px 18px' }}>
-              <h3 style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 700, fontSize: 'clamp(24px,3vw,32px)', letterSpacing: '-0.015em', margin: 0 }}>{egg.name}</h3>
-              <span style={{ fontFamily: "'Resiple',sans-serif", fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#7c909b' }}>{egg.location}</span>
-            </div>
-            <p style={{ fontSize: 15.5, lineHeight: 1.6, color: '#a9bcc6', margin: '14px 0 0', maxWidth: 640 }}>{egg.blurb}</p>
-            <div style={{ marginTop: 28 }}>
-              {state.status === 'loading' ? (
-                <div style={{ fontFamily: "'Resiple',sans-serif", fontSize: 14.5, color: '#7c909b' }}>Contacting the egg…</div>
-              ) : series.length === 0 ? (
-                <div style={{ fontFamily: "'Resiple',sans-serif", fontSize: 14.5, color: '#7c909b' }}>The sensor feed is offline right now. Check back soon.</div>
-              ) : (
-                <EggCharts series={series} />
-              )}
-            </div>
-          </div>
-        );
-      })}
+      {/* the °C/°F toggle sits OUTSIDE the <details>, overlaid on the summary
+          row - inside it, a near-miss click collapses the whole section */}
+      <div style={{ position: 'relative', marginTop: 32 }}>
+      <details open>
+        <summary style={{ display: 'inline-flex', alignItems: 'center', gap: 10, minHeight: 37, fontFamily: "'Resiple',sans-serif", fontSize: 14, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#6d9dcd' }}>
+          Air Quality
+        </summary>
+        {EGGS.map((egg) => {
+          const series = parsed[egg.id];
+          return (
+            <details key={egg.id} open style={{ background: '#141c26', border: '1px solid #6d9dcd', padding: 'clamp(20px,3.5vw,36px)', marginTop: 24 }}>
+              <summary style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '8px 18px' }}>
+                <span className="chev" style={{ color: '#7c909b', alignSelf: 'center' }} />
+                <h3 style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 700, fontSize: 'clamp(24px,3vw,32px)', letterSpacing: '-0.015em', margin: 0 }}>{egg.name}</h3>
+                <span style={{ fontFamily: "'Resiple',sans-serif", fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#7c909b' }}>{egg.location}</span>
+              </summary>
+              <div style={{ marginTop: 28 }}>
+                {state.status === 'loading' ? (
+                  <div style={{ fontFamily: "'Resiple',sans-serif", fontSize: 14.5, color: '#7c909b' }}>Contacting the egg…</div>
+                ) : series.length === 0 ? (
+                  <div style={{ fontFamily: "'Resiple',sans-serif", fontSize: 14.5, color: '#7c909b' }}>The sensor feed is offline right now. Check back soon.</div>
+                ) : (
+                  <EggCharts series={series} unit={unit} />
+                )}
+              </div>
+            </details>
+          );
+        })}
+      </details>
+      <div style={{ position: 'absolute', top: 0, right: 0, display: 'inline-flex', border: '2px solid rgba(255,255,255,0.3)', overflow: 'hidden' }}>
+        {(['C', 'F'] as const).map((u) => (
+          <button key={u} onClick={() => setUnit(u)} style={{ appearance: 'none', border: 'none', cursor: 'pointer', padding: '8px 18px', fontFamily: "'Resiple',sans-serif", fontSize: 14, letterSpacing: '0.1em', background: unit === u ? '#4fae7d' : 'transparent', color: unit === u ? '#0e141c' : '#7c909b' }}>
+            °{u}
+          </button>
+        ))}
+      </div>
+      </div>
     </>
   );
 }
@@ -882,11 +963,11 @@ export default function App() {
   }, [route, onSubPage]);
 
   return (
-    <div style={{ position: 'relative', width: '100%', overflowX: 'clip', background: '#080b0f' }}>
-      <header className="site-header" style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 42px', background: 'rgba(8,11,15,0.85)', fontFamily: "'Resiple',sans-serif" }}>
+    <div style={{ position: 'relative', width: '100%', overflowX: 'clip', background: '#0e141c' }}>
+      <header className="site-header" style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 42px', background: 'rgba(14,20,28,0.85)', fontFamily: "'Resiple',sans-serif" }}>
         <a href="#top" className="logo-link" style={{ display: 'flex', alignItems: 'center', gap: 12, color: '#e6ecf0', flexShrink: 0 }}>
           <img src="/logo.png" alt="" style={{ width: 78, height: 78, flexShrink: 0 }} />
-          <span className="logo-text" style={{ fontFamily: "'Intan',sans-serif", fontWeight: 700, fontSize: 26, letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>GeoData</span>
+          <span className="logo-text" style={{ fontFamily: "'Intan',sans-serif", fontWeight: 700, fontSize: 33, letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>GeoData</span>
         </a>
         <nav className="site-nav" style={{ display: 'flex', alignItems: 'center', gap: 30, fontSize: 17.5, flexShrink: 0 }}>
           <div className="site-nav-links" style={{ display: 'flex', alignItems: 'center', gap: 30 }}>
@@ -913,7 +994,7 @@ export default function App() {
         {menuOpen && (
           // hashchange closes the menu on navigation; this onClick covers taps
           // on the link matching the current hash, which fire no hashchange
-          <nav className="nav-menu" onClick={() => setMenuOpen(false)} style={{ position: 'absolute', top: '100%', left: 0, right: 0, display: 'none', flexDirection: 'column', background: 'rgba(8,11,15,0.97)', borderBottom: '1px solid rgba(255,255,255,0.1)', padding: '6px 24px 18px', fontFamily: "'Resiple',sans-serif" }}>
+          <nav className="nav-menu" onClick={() => setMenuOpen(false)} style={{ position: 'absolute', top: '100%', left: 0, right: 0, display: 'none', flexDirection: 'column', background: 'rgba(14,20,28,0.97)', borderBottom: '1px solid rgba(255,255,255,0.1)', padding: '6px 24px 18px', fontFamily: "'Resiple',sans-serif" }}>
             {[['#projects', 'Projects'], ['#members', 'Members'], ['#/sponsors', 'Sponsors'], ['#/posts', 'Posts'], ['#/sensors', 'Sensors'], ['#join', 'Join the team']].map(([href, label]) => (
               <a key={href} href={href} style={{ color: '#e6ecf0', fontSize: 17, fontWeight: 700, padding: '13px 0', borderTop: '1px solid rgba(255,255,255,0.08)' }}>{label}</a>
             ))}
@@ -924,38 +1005,38 @@ export default function App() {
       <span id="top" />
 
       {activePost ? (
-      <section style={{ position: 'relative', zIndex: 2, background: '#080b0f', padding: '150px clamp(24px,5vw,72px) 110px', minHeight: '100vh' }}>
+      <section style={{ position: 'relative', zIndex: 2, background: '#0e141c', padding: '150px clamp(24px,5vw,72px) 110px', minHeight: '100vh' }}>
         <div style={{ maxWidth: 920, margin: '0 auto' }}>
           <a href="#/posts" style={{ fontFamily: "'Resiple',sans-serif", fontSize: 14.5 }}>← All posts</a>
-          <div style={{ fontFamily: "'Resiple',sans-serif", fontSize: 13, letterSpacing: '0.16em', textTransform: 'uppercase', color: activePost.tagColor, marginTop: 30 }}>{activePost.tag}</div>
+          <div style={{ fontFamily: "'Resiple',sans-serif", fontSize: 13, letterSpacing: '0.16em', textTransform: 'uppercase', color: activePost.tagColor, marginTop: 30 }}>{fmtTag(activePost.tag)}</div>
           <h2 style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 700, fontSize: 'clamp(34px,4.6vw,56px)', letterSpacing: '-0.02em', lineHeight: 1.05, margin: '16px 0 0' }}>{activePost.title}</h2>
           <div style={{ fontFamily: "'Resiple',sans-serif", fontSize: 12.5, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#7c909b', marginTop: 18 }}>{activePost.date}</div>
-          <div className="team-photo-frame" style={{ padding: 14, border: `2px solid ${activePost.tagColor}`, boxShadow: '10px 10px 0 rgba(255,255,255,0.08)', marginTop: 56 }}>
+          <div className="team-photo-frame" style={{ padding: 14, border: `2px solid ${activePost.tagColor}`, marginTop: 56 }}>
             {activePost.photo ? (
               <img decoding="async" src={activePost.photo} alt="" style={{ display: 'block', width: '100%', aspectRatio: '16/9', objectFit: 'cover' }} />
             ) : (
-              <div style={{ aspectRatio: '16/9', background: '#12181e' }} />
+              <div style={{ aspectRatio: '16/9', background: '#1a2430' }} />
             )}
           </div>
           {/* text runs get lifted cards for readability; images sit on the page between them */}
           {postChunks.map((chunk, i) => (
             Array.isArray(chunk) ? (
-              <div key={i} style={{ background: '#101820', border: '1px solid rgba(255,255,255,0.07)', padding: 'clamp(24px,5vw,56px)', marginTop: i === 0 ? 56 : 48 }}>
+              <div key={i} style={{ background: '#17212c', border: '1px solid rgba(255,255,255,0.07)', padding: 'clamp(24px,5vw,56px)', maxWidth: 760, margin: `${i === 0 ? 56 : 48}px auto 0` }}>
                 {chunk.map((para, j) => (
                   <p key={j} style={{ fontSize: 18.5, lineHeight: 1.85, color: '#c4d1d9', margin: j === 0 ? 0 : '36px 0 0' }}>{emphasize(para)}</p>
                 ))}
               </div>
             ) : (
-              <div key={i} className="team-photo-frame" style={{ padding: 14, border: `2px solid ${activePost.tagColor}`, boxShadow: '10px 10px 0 rgba(255,255,255,0.08)', maxWidth: chunk.max, margin: `${i === 0 ? 56 : 48}px auto 0` }}>
+              <div key={i} className="team-photo-frame" style={{ padding: 14, border: `2px solid ${activePost.tagColor}`, maxWidth: chunk.max, margin: `${i === 0 ? 56 : 48}px auto 0` }}>
                 <img loading="lazy" decoding="async" src={chunk.img} alt="" style={{ display: 'block', width: '100%', height: 'auto' }} />
               </div>
             )
           ))}
           {(activePost.links.length > 0 || activePost.credit) && (
-            <div style={{ background: '#101820', border: '1px solid rgba(255,255,255,0.07)', padding: 'clamp(24px,5vw,56px)', marginTop: 48 }}>
+            <div style={{ background: '#17212c', border: '1px solid rgba(255,255,255,0.07)', padding: 'clamp(24px,5vw,56px)', maxWidth: 760, margin: '48px auto 0' }}>
               {activePost.links.length > 0 && (
                 <>
-                  <div style={{ fontFamily: "'Resiple',sans-serif", fontSize: 13, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#0e8f38' }}>Links</div>
+                  <div style={{ fontFamily: "'Resiple',sans-serif", fontSize: 13, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#4fae7d' }}>Links</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 20 }}>
                     {activePost.links.map((link) => (
                       <a key={link.label} href={link.href} target={link.href.startsWith('http') ? '_blank' : undefined} rel="noopener noreferrer" style={{ fontSize: 16.5, alignSelf: 'flex-start', color: '#4fae7d' }}>{link.label} ↗</a>
@@ -971,11 +1052,9 @@ export default function App() {
         </div>
       </section>
       ) : onPostsPage ? (
-      <section style={{ position: 'relative', zIndex: 2, background: '#080b0f', padding: '150px clamp(24px,5vw,72px) 110px', minHeight: '100vh' }}>
+      <section style={{ position: 'relative', zIndex: 2, background: '#0e141c', padding: '150px clamp(24px,5vw,72px) 110px', minHeight: '100vh' }}>
         <div style={{ maxWidth: 940, margin: '0 auto' }}>
-          <div style={{ fontFamily: "'Resiple',sans-serif", fontSize: 13, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#086727' }}>Field notes</div>
           <h2 style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 700, fontSize: 'clamp(36px,4.8vw,60px)', letterSpacing: '-0.02em', lineHeight: 1.02, margin: '18px 0 0' }}>Posts</h2>
-          <p style={{ fontSize: 16.5, lineHeight: 1.6, color: '#a9bcc6', margin: '18px 0 0', maxWidth: 560 }}>Dispatches from the lake, the lab, and wherever else we left a sensor.</p>
           <div style={{ display: 'flex', gap: 10, marginTop: 36 }}>
             {([['all', 'All'], ['project', 'Projects'], ['blog', 'Blog']] as const).map(([value, label]) => (
               <button
@@ -995,39 +1074,34 @@ export default function App() {
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px 8px', fontFamily: "'Resiple',sans-serif", fontSize: 12, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#7c909b' }}>
                       <span style={{ border: `1px solid ${post.kind === 'project' ? '#4fae7d' : '#dcbe32'}`, color: post.kind === 'project' ? '#4fae7d' : '#dcbe32', borderRadius: 999, padding: '2px 10px', fontSize: 10.5 }}>{post.kind === 'project' ? 'Project' : 'Blog'}</span>
-                      <span>{post.date} · <span style={{ color: post.tagColor }}>{post.tag}</span></span>
+                      <span>{post.date} <span style={{ color: post.tagColor }}>{fmtTag(post.tag)}</span></span>
                     </div>
                     <h3 style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 700, fontSize: 'clamp(24px,3.2vw,34px)', letterSpacing: '-0.015em', lineHeight: 1.12, margin: '14px 0 0' }}>{post.title}</h3>
                     <p style={{ fontSize: 16, lineHeight: 1.6, color: '#a9bcc6', margin: '14px 0 0' }}>{post.dek}</p>
                   </div>
-                  <div style={{ padding: 10, border: `2px solid ${post.tagColor}`, boxShadow: '6px 6px 0 rgba(255,255,255,0.09)' }}>
+                  <div style={{ padding: 10, border: `2px solid ${post.tagColor}` }}>
                     {post.photo ? (
                       <img loading="lazy" decoding="async" src={post.photo} alt="" style={{ display: 'block', width: '100%', aspectRatio: '4/3', objectFit: 'cover' }} />
                     ) : (
-                      <div style={{ aspectRatio: '4/3', background: '#12181e' }} />
+                      <div style={{ aspectRatio: '4/3', background: '#1a2430' }} />
                     )}
                   </div>
                 </a>
               </article>
             ))}
           </div>
-          <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: 44, paddingTop: 26, fontFamily: "'Resiple',sans-serif", fontSize: 13, color: '#5f7078' }}>More field notes soon. We're probably out at the lake.</div>
         </div>
       </section>
       ) : onSensorsPage ? (
-      <section style={{ position: 'relative', zIndex: 2, background: '#080b0f', padding: '150px clamp(24px,5vw,72px) 110px', minHeight: '100vh' }}>
+      <section style={{ position: 'relative', zIndex: 2, background: '#0e141c', padding: '150px clamp(24px,5vw,72px) 110px', minHeight: '100vh' }}>
         <div style={{ maxWidth: 1180, margin: '0 auto' }}>
-          <div style={{ fontFamily: "'Resiple',sans-serif", fontSize: 13, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#086727' }}>Live data</div>
           <h2 style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 700, fontSize: 'clamp(36px,4.8vw,60px)', letterSpacing: '-0.02em', lineHeight: 1.02, margin: '18px 0 0' }}>Active Sensors</h2>
-          <p style={{ fontSize: 17, lineHeight: 1.65, color: '#a9bcc6', maxWidth: 620, margin: '26px 0 0' }}>Instruments we have in the field right now, reporting in. This page reads from the same feeds we do.</p>
           <SensorsFeed />
-          <p style={{ fontSize: 14.5, color: '#5f7078', margin: '26px 0 0' }}>More sensors join this page as they go into the field.</p>
         </div>
       </section>
       ) : onSponsorsPage ? (
-      <section style={{ position: 'relative', zIndex: 2, background: '#080b0f', padding: '150px clamp(24px,5vw,72px) 110px', minHeight: '100vh' }}>
+      <section style={{ position: 'relative', zIndex: 2, background: '#0e141c', padding: '150px clamp(24px,5vw,72px) 110px', minHeight: '100vh' }}>
         <div style={{ maxWidth: 1180, margin: '0 auto' }}>
-          <div style={{ fontFamily: "'Resiple',sans-serif", fontSize: 13, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#086727' }}>Support the team</div>
           <h2 style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 700, fontSize: 'clamp(36px,4.8vw,60px)', letterSpacing: '-0.02em', lineHeight: 1.02, margin: '18px 0 0' }}>Sponsorship</h2>
           <p style={{ fontSize: 17, lineHeight: 1.65, color: '#a9bcc6', maxWidth: 620, margin: '26px 0 0' }}>Every instrument we field, from sensors and sondes to six-legged robots, is designed, built, and broken in by students. Sponsors are what keep the hardware in the water and the team in waders.</p>
           <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 34 }}>
@@ -1037,7 +1111,7 @@ export default function App() {
 
           {/* PACKET BOARD */}
           <div className="team-photo-frame packet-board" style={{ padding: 14, border: '2px solid #086727', boxShadow: '10px 10px 0 rgba(8,103,39,0.35)', marginTop: 64 }}>
-            <object data={`${SPONSOR_PACKET_PDF}#view=FitH`} type="application/pdf" aria-label="GeoData sponsorship packet" style={{ display: 'block', width: '100%', height: 'min(75vh, 780px)', background: '#12181e' }}>
+            <object data={`${SPONSOR_PACKET_PDF}#view=FitH`} type="application/pdf" aria-label="GeoData sponsorship packet" style={{ display: 'block', width: '100%', height: 'min(75vh, 780px)', background: '#1a2430' }}>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, height: '100%', padding: 24, textAlign: 'center' }}>
                 <p style={{ color: '#a9bcc6', margin: 0, maxWidth: 420, lineHeight: 1.6 }}>Your browser doesn't show PDFs inline, so grab the packet directly instead.</p>
                 <a href={SPONSOR_PACKET_PDF} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', padding: '11px 24px', borderRadius: 999, background: '#086727', color: '#eaf2ee', fontWeight: 700, fontFamily: "'Resiple',sans-serif" }}>Open the sponsorship packet</a>
@@ -1047,11 +1121,10 @@ export default function App() {
 
           {/* TIERS */}
           <div style={{ marginTop: 110 }}>
-            <div style={{ fontFamily: "'Resiple',sans-serif", fontSize: 13, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#086727' }}>Sponsorship tiers</div>
-            <h3 style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 700, fontSize: 'clamp(28px,3.4vw,40px)', letterSpacing: '-0.02em', margin: '16px 0 0' }}>Rock, water, air, and beyond</h3>
+            <h3 style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 700, fontSize: 'clamp(28px,3.4vw,40px)', letterSpacing: '-0.02em', margin: '16px 0 0' }}>Sponsorship tiers</h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(240px,100%),1fr))', gap: 26, marginTop: 44 }}>
               {TIERS.map((tier) => (
-                <div key={tier.name} style={{ background: '#0d131a', borderTop: `3px solid ${tier.color}`, padding: '26px 24px' }}>
+                <div key={tier.name} style={{ background: '#141c26', borderTop: `3px solid ${tier.color}`, padding: '26px 24px' }}>
                   <div style={{ fontFamily: "'Resiple',sans-serif", fontSize: 12, letterSpacing: '0.16em', textTransform: 'uppercase', color: tier.color }}>{tier.name}</div>
                   <div style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 700, fontSize: 34, marginTop: 12 }}>{tier.amount}</div>
                   <ul style={{ margin: '18px 0 0', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -1068,7 +1141,6 @@ export default function App() {
 
           {/* ALUMNI */}
           <div style={{ marginTop: 130 }}>
-            <div style={{ fontFamily: "'Resiple',sans-serif", fontSize: 13, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#086727' }}>Life after GeoData</div>
             <h2 style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 700, fontSize: 'clamp(36px,4.8vw,60px)', letterSpacing: '-0.02em', lineHeight: 1.02, margin: '18px 0 0' }}>Alumni</h2>
             <p style={{ fontSize: 17, lineHeight: 1.65, color: '#a9bcc6', maxWidth: 620, margin: '26px 0 0' }}>GeoData alumni have landed at the organizations, companies, and labs below. Go ahead and toss them around; they're used to landing on their feet.</p>
             <div className="team-photo-frame" style={{ padding: 14, border: '2px solid #086727', boxShadow: '10px 10px 0 rgba(8,103,39,0.35)', marginTop: 40 }}>
@@ -1081,9 +1153,9 @@ export default function App() {
         </div>
       </section>
       ) : legalPage ? (
-      <section style={{ position: 'relative', zIndex: 2, background: '#080b0f', padding: '150px clamp(24px,5vw,72px) 110px', minHeight: '100vh' }}>
+      <section style={{ position: 'relative', zIndex: 2, background: '#0e141c', padding: '150px clamp(24px,5vw,72px) 110px', minHeight: '100vh' }}>
         <div style={{ maxWidth: 820, margin: '0 auto' }}>
-          <div style={{ fontFamily: "'Resiple',sans-serif", fontSize: 13, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#086727' }}>CU GeoData</div>
+          <div style={{ fontFamily: "'Resiple',sans-serif", fontSize: 13, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#4fae7d' }}>CU GeoData</div>
           <h2 style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 700, fontSize: 'clamp(36px,4.8vw,60px)', letterSpacing: '-0.02em', lineHeight: 1.02, margin: '18px 0 0' }}>{legalPage.title}</h2>
           <div style={{ fontFamily: "'Resiple',sans-serif", fontSize: 13, color: '#7c909b', marginTop: 14 }}>Last updated: {legalPage.updated}</div>
           {legalPage.sections.map((s) => (
@@ -1101,9 +1173,8 @@ export default function App() {
       <Globe />
 
       {/* PROJECTS */}
-      <section id="projects" style={{ position: 'relative', zIndex: 2, background: '#080b0f', padding: '120px clamp(24px,5vw,72px) 48px' }}>
+      <section id="projects" style={{ position: 'relative', zIndex: 2, background: '#0e141c', padding: '120px clamp(24px,5vw,72px) 48px' }}>
         <div style={{ maxWidth: 1180, margin: '0 auto' }}>
-          <div style={{ fontFamily: "'Resiple',sans-serif", fontSize: 13, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#086727' }}>Featured work</div>
           <h2 style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 700, fontSize: 'clamp(36px,4.8vw,60px)', letterSpacing: '-0.02em', lineHeight: 1.02, margin: '18px 0 0', maxWidth: '16ch' }}>Instruments built by students, deployed in the field</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(420px,100%),1fr))', gap: 26, marginTop: 56 }}>
             {PROJECTS.map((proj) => (
@@ -1116,18 +1187,18 @@ export default function App() {
                 ) : proj.photo ? (
                   <img loading="lazy" decoding="async" src={proj.photo} alt={proj.title} style={{ display: 'block', width: '100%', aspectRatio: proj.photoAspect ?? '16/10', objectFit: 'cover', objectPosition: proj.photoPosition }} />
                 ) : (
-                  <div style={{ aspectRatio: '16/10', background: '#12181e' }} />
+                  <div style={{ aspectRatio: '16/10', background: '#1a2430' }} />
                 )}
                 <div style={{ padding: '20px 0 0' }}>
-                  <div style={{ fontFamily: "'Resiple',sans-serif", fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: proj.tagColor }}>{proj.tag}</div>
+                  <div style={{ fontFamily: "'Resiple',sans-serif", fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: proj.tagColor }}>{fmtTag(proj.tag)}</div>
                   <h3 style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 600, fontSize: 25, margin: '12px 0 0', letterSpacing: '-0.01em' }}>
                     {proj.slug ? (
-                      <a href={`#/posts/${proj.slug}`} className="post-link" aria-label={`Read the ${proj.title} post`}>{proj.title} <span aria-hidden="true" style={{ fontSize: 19, color: '#086727' }}>→</span></a>
+                      <a href={`#/posts/${proj.slug}`} className="post-link" aria-label={`Read the ${proj.title} post`}>{proj.title} <span aria-hidden="true" style={{ fontSize: 19, color: '#4fae7d' }}>→</span></a>
                     ) : (
                       proj.title
                     )}
                   </h3>
-                  <p style={{ fontSize: 15, lineHeight: 1.6, color: '#a9bcc6', margin: '12px 0 0' }}>{proj.body}</p>
+                  {proj.body && <p style={{ fontSize: 15, lineHeight: 1.6, color: '#a9bcc6', margin: '12px 0 0' }}>{proj.body}</p>}
                 </div>
               </article>
             ))}
@@ -1136,20 +1207,19 @@ export default function App() {
       </section>
 
       {/* MEMBERS */}
-      <section id="members" style={{ position: 'relative', zIndex: 2, background: '#080b0f', padding: '48px clamp(24px,5vw,72px) 96px' }}>
+      <section id="members" style={{ position: 'relative', zIndex: 2, background: '#0e141c', padding: '48px clamp(24px,5vw,72px) 96px' }}>
         <div style={{ maxWidth: 1180, margin: '0 auto' }}>
           <div className="members-head" style={{ display: 'flex', flexWrap: 'wrap', gap: '28px 48px', alignItems: 'flex-end', justifyContent: 'space-between' }}>
             <div>
-              <div style={{ fontFamily: "'Resiple',sans-serif", fontSize: 13, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#086727' }}>The team</div>
               <h2 style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 700, fontSize: 'clamp(36px,4.8vw,60px)', letterSpacing: '-0.02em', lineHeight: 1.02, margin: '18px 0 0' }}>Members</h2>
             </div>
             <div className="members-stats" style={{ padding: '26px 36px', display: 'flex', gap: 48 }}>
               <div>
-                <div className="stat-num" style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 700, fontSize: 46, lineHeight: 1, color: '#086727' }}>{SUBTEAM_COUNT}</div>
+                <div className="stat-num" style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 700, fontSize: 46, lineHeight: 1, color: '#4fae7d' }}>{SUBTEAM_COUNT}</div>
                 <div className="stat-label" style={{ fontFamily: "'Resiple',sans-serif", fontSize: 12, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#a9bcc6', marginTop: 10 }}>Subteams</div>
               </div>
               <div>
-                <div className="stat-num" style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 700, fontSize: 46, lineHeight: 1, color: '#086727' }}>{MEMBER_COUNT}</div>
+                <div className="stat-num" style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 700, fontSize: 46, lineHeight: 1, color: '#4fae7d' }}>{MEMBER_COUNT}</div>
                 <div className="stat-label" style={{ fontFamily: "'Resiple',sans-serif", fontSize: 12, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#a9bcc6', marginTop: 10 }}>Members</div>
               </div>
             </div>
@@ -1174,7 +1244,7 @@ export default function App() {
                           {m.photo ? (
                             <img loading="lazy" decoding="async" src={m.photo} alt="" draggable={false} style={{ display: 'block', width: '100%', aspectRatio: '1/1', objectFit: 'cover' }} />
                           ) : (
-                            <div style={{ aspectRatio: '1/1', background: '#12181e' }} />
+                            <div style={{ aspectRatio: '1/1', background: '#1a2430' }} />
                           )}
                           <div className="member-flip" style={{ position: 'absolute', inset: 0, background: 'rgba(12,18,24,0.82)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', border: `2px solid ${color}`, padding: 16, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 10 }}>
                           <div style={{ fontFamily: "'Resiple',sans-serif", fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color }}>{m.role ?? (m.lead ? 'Subteam Lead' : 'Contact')}</div>
@@ -1195,7 +1265,7 @@ export default function App() {
                             <span style={{ fontSize: 13.5, color: '#5f7078' }}>Contact coming soon</span>
                           )}
                           {m.linkedin && (
-                            <a href={m.linkedin} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} style={{ fontFamily: "'Resiple',sans-serif", fontSize: 12, letterSpacing: '0.06em', color: '#a9bcc6', alignSelf: 'flex-start' }}>LinkedIn</a>
+                            <a href={m.linkedin} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="member-linkedin" style={{ fontFamily: "'Resiple',sans-serif", fontSize: 12, letterSpacing: '0.06em', alignSelf: 'flex-start' }}>{m.linkedin.includes('scholar.google') ? 'Google Scholar' : 'LinkedIn'}</a>
                           )}
                           </div>
                         </div>
@@ -1209,7 +1279,7 @@ export default function App() {
                           {m.photo ? (
                             <img loading="lazy" decoding="async" src={m.photo} alt={m.name} draggable={false} style={{ display: 'block', width: '100%', aspectRatio: '1/1', objectFit: 'cover', userSelect: 'none', WebkitUserSelect: 'none' }} />
                           ) : (
-                            <div style={{ aspectRatio: '1/1', background: '#12181e' }} />
+                            <div style={{ aspectRatio: '1/1', background: '#1a2430' }} />
                           )}
                         </button>
                       )}
@@ -1231,17 +1301,32 @@ export default function App() {
           <figure style={{ margin: '72px 0 0' }}>
             <div className="team-photo-frame" style={{ position: 'relative', padding: 14, border: '2px solid #086727', boxShadow: '10px 10px 0 rgba(8,103,39,0.35)' }}>
               <img loading="lazy" decoding="async" src="/team.jpg" alt="The GeoData team on the stairs of Upson Hall" style={{ display: 'block', width: '100%', height: 'auto', aspectRatio: '1600/1066' }} />
-              <figcaption className="team-photo-caption" style={{ position: 'absolute', bottom: 30, left: 30, background: '#086727', color: '#eaf2ee', fontFamily: "'Intan',sans-serif", fontSize: 'clamp(16px,2.2vw,24px)', letterSpacing: '0.04em', padding: '10px 22px', whiteSpace: 'nowrap' }}>Team Photo '25–'26</figcaption>
+              <figcaption className="team-photo-caption" style={{ position: 'absolute', bottom: 30, left: 30, background: '#086727', color: '#eaf2ee', fontFamily: "'Intan',sans-serif", fontSize: 'clamp(16px,2.2vw,24px)', letterSpacing: '0.04em', padding: '10px 22px', whiteSpace: 'nowrap' }}>Team Photo '25 – '26</figcaption>
             </div>
           </figure>
         </div>
       </section>
 
       {/* JOIN */}
-      <section id="join" style={{ position: 'relative', zIndex: 2, background: '#080b0f', padding: '130px clamp(24px,5vw,72px)' }}>
+      <section id="join" style={{ position: 'relative', zIndex: 2, background: '#0e141c', padding: '130px clamp(24px,5vw,72px)' }}>
         <div style={{ maxWidth: 820 }}>
-          <div style={{ fontFamily: "'Resiple',sans-serif", fontSize: 13, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#086727' }}>Recruitment open</div>
-          <h2 style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 700, fontSize: 'clamp(42px,6.2vw,80px)', letterSpacing: '-0.03em', lineHeight: 1, margin: '20px 0 0' }}>Design, Deploy,<br /><span style={{ color: '#086727' }}>Discover</span></h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontFamily: "'Resiple',sans-serif", fontSize: 20, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#4fae7d' }}>
+            {/* tethersonde stand-in for the usual "we're live" dot */}
+            <svg className="balloon-bob" width="34" height="40" viewBox="-7 -7 34 40" fill="none" aria-hidden="true">
+              {/* hand-drawn emphasis dashes radiating off the balloon */}
+              <path d="M10 -5.5 L10 -2.8" stroke="#4fae7d" strokeWidth="1.7" strokeLinecap="round" />
+              <path d="M1.2 -2.4 L3.4 0" stroke="#4fae7d" strokeWidth="1.7" strokeLinecap="round" />
+              <path d="M18.8 -2.4 L16.6 0" stroke="#4fae7d" strokeWidth="1.7" strokeLinecap="round" />
+              <path d="M-4.5 6 L-1.6 6.8" stroke="#4fae7d" strokeWidth="1.7" strokeLinecap="round" />
+              <path d="M24.5 6 L21.6 6.8" stroke="#4fae7d" strokeWidth="1.7" strokeLinecap="round" />
+              <circle cx="10" cy="8.5" r="7" stroke="#4fae7d" strokeWidth="2" />
+              <path d="M8 15 L10 18 L12 15" stroke="#4fae7d" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+              <path d="M10 18 C 10 21, 8.5 22.5, 10 25" stroke="#4fae7d" strokeWidth="1.4" strokeLinecap="round" fill="none" />
+              <rect x="7.5" y="25" width="5" height="5" stroke="#4fae7d" strokeWidth="1.6" />
+            </svg>
+            Recruitment open
+          </div>
+          <h2 style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 700, fontSize: 'clamp(42px,6.2vw,80px)', letterSpacing: '-0.03em', lineHeight: 1, margin: '20px 0 0' }}>Design, Deploy,<br /><span style={{ color: '#4fae7d' }}>Discover</span></h2>
           <p style={{ fontSize: 17, lineHeight: 1.65, color: '#a9bcc6', maxWidth: 560, margin: '26px 0 0' }}>Build the instruments a changing planet needs. GeoData welcomes students of every major, from CS and MechE to earth science and design. If you want to build hardware that ends up outdoors collecting real data, there's a subteam for you.</p>
           <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 38 }}>
             <a href="https://docs.google.com/forms/d/e/1FAIpQLSfAKoT7-gJrNmK0nJYy7yEqsZI0egEgZqf0gG8794XujlYAVw/viewform" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', padding: '15px 32px', borderRadius: 999, background: '#086727', color: '#eaf2ee', fontWeight: 700, fontSize: 18.5, fontFamily: "'Resiple',sans-serif" }}>Apply to join</a>
@@ -1253,8 +1338,8 @@ export default function App() {
       </>
       )}
 
-      {/* FOOTER - supported by + contact; template details, replace with real ones */}
-      <footer id="partners" style={{ position: 'relative', zIndex: 2, background: '#080b0f', padding: '84px clamp(24px,5vw,72px) 36px' }}>
+      {/* FOOTER - supported by + contact */}
+      <footer id="partners" style={{ position: 'relative', zIndex: 2, background: '#0e141c', padding: '84px clamp(24px,5vw,72px) 36px' }}>
         <div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '48px 72px', justifyContent: 'space-between' }}>
             <div style={{ flex: '1 1 220px' }}>
@@ -1263,6 +1348,7 @@ export default function App() {
                 <span>Cornell University</span>
                 <span>Ithaca, NY</span>
               </div>
+              <img src="/cornell-engineering.svg" alt="Cornell Duffield College of Engineering" style={{ display: 'block', height: 22, width: 'auto', maxWidth: '100%', marginTop: 20 }} />
             </div>
             <div style={{ flex: '1 1 220px' }}>
               <div style={{ fontFamily: "'Resiple',sans-serif", fontSize: 12, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#7c909b' }}>Supported by</div>
@@ -1286,7 +1372,7 @@ export default function App() {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 14, fontSize: 14 }}>
                 <a href="mailto:cugeodata@cornell.edu">cugeodata@cornell.edu</a>
-                <span style={{ color: '#a9bcc6' }}>Upson Hall · Ithaca, NY 14853</span>
+                <span style={{ color: '#a9bcc6' }}>Upson Hall Ithaca, NY 14853</span>
               </div>
             </div>
           </div>

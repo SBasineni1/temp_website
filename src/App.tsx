@@ -1,4 +1,6 @@
+import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Globe from './Globe';
 import { RESIPLE, MANTI, H2, BODY, PILL, PILL_PRIMARY } from './theme';
 import { PROJECTS, PARTNERS, LEGAL_PAGES, POSTS, SPONSOR_PACKET_PDF, TIERS, ALUMNI } from './content';
@@ -12,6 +14,72 @@ const fmtTag = (tag: string) => tag.split(/( x )/).map((p, i) => (p === ' x ' ? 
 const emphasize = (text: string) =>
   text.split(/\*\*(.+?)\*\*/g).map((part, i) => (i % 2 ? <strong key={i} style={{ color: '#e6ecf0' }}>{part}</strong> : part));
 
+// the packet renders as pre-baked page images (public/sponsorship/) instead of
+// a browser <object> PDF embed - consistent styling, works on phones, and
+// avoids downloading the 29MB PDF just to preview it. Regenerate after
+// updating the packet:
+//   pdftoppm -jpeg -jpegopt quality=78 -scale-to-x 1400 -scale-to-y -1 public/sponsorship-packet.pdf public/sponsorship/page
+const PACKET_PAGE_COUNT = 12;
+const packetPageSrc = (n: number) => `/sponsorship/page-${String(n + 1).padStart(2, '0')}.jpg`;
+
+function PacketViewer() {
+  const [page, setPage] = useState(0);
+  // fixed-overlay "fullscreen" rather than the Fullscreen API - iPhones don't
+  // support requestFullscreen on elements, the overlay works everywhere
+  const [full, setFull] = useState(false);
+  // fetch the next page ahead of the click so turning feels instant
+  useEffect(() => {
+    if (page < PACKET_PAGE_COUNT - 1) new Image().src = packetPageSrc(page + 1);
+  }, [page]);
+  // arrow keys page through while the sponsors page is up; Esc exits fullscreen
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight') setPage((p) => Math.min(p + 1, PACKET_PAGE_COUNT - 1));
+      else if (e.key === 'ArrowLeft') setPage((p) => Math.max(p - 1, 0));
+      else if (e.key === 'Escape') setFull(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+  useEffect(() => {
+    document.body.style.overflow = full ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [full]);
+  const arrowStyle = (enabled: boolean): React.CSSProperties => ({ padding: '7px 22px', border: '1px solid rgba(255,255,255,0.18)', background: 'transparent', color: enabled ? '#e6ecf0' : '#4d5b63', fontFamily: RESIPLE, fontWeight: 700, fontSize: 17, cursor: enabled ? 'pointer' : 'default', lineHeight: 1.2 });
+  const cornerBtn: React.CSSProperties = { padding: '7px 16px', fontFamily: RESIPLE, fontWeight: 700, fontSize: 12.5, boxShadow: '0 2px 10px rgba(0,0,0,0.45)', lineHeight: 1.4 };
+  const viewer = (
+    <div
+      className="team-photo-frame"
+      style={full
+        ? { position: 'fixed', inset: 0, zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(14,20,28,0.98)', padding: 14 }
+        : { width: 'fit-content', maxWidth: '100%', margin: '64px auto 0', padding: 14, border: '2px solid #086727', boxShadow: '10px 10px 0 rgba(8,103,39,0.35)' }}
+    >
+      <div style={{ position: 'relative' }}>
+        {/* sized by height so the whole page fits on screen without scrolling */}
+        <img key={page} src={packetPageSrc(page)} alt={`Sponsorship packet, page ${page + 1} of ${PACKET_PAGE_COUNT}`} style={{ display: 'block', height: full ? 'calc(100vh - 110px)' : 'min(74vh, 760px)', maxWidth: '100%', aspectRatio: '1400/1812', objectFit: 'contain', background: '#1a2430' }} />
+        <div style={{ position: 'absolute', right: 10, bottom: 10, display: 'flex', gap: 8 }}>
+          <button
+            type="button"
+            title={full ? 'Exit fullscreen (Esc)' : 'View fullscreen'}
+            onClick={() => setFull(!full)}
+            style={{ ...cornerBtn, border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(14,20,28,0.75)', color: '#e6ecf0', cursor: 'pointer' }}
+          >
+            {full ? 'Exit' : 'Fullscreen'}
+          </button>
+        </div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, paddingTop: 14 }}>
+        <button type="button" aria-label="Previous page" disabled={page === 0} onClick={() => setPage(page - 1)} style={arrowStyle(page > 0)}>←</button>
+        <span style={{ fontFamily: RESIPLE, fontSize: 12.5, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#a9bcc6', minWidth: '9ch', textAlign: 'center' }}>Page <span style={{ fontWeight: 700, color: '#e6ecf0' }}>{page + 1}</span> of <span style={{ fontWeight: 700, color: '#e6ecf0' }}>{PACKET_PAGE_COUNT}</span></span>
+        <button type="button" aria-label="Next page" disabled={page === PACKET_PAGE_COUNT - 1} onClick={() => setPage(page + 1)} style={arrowStyle(page < PACKET_PAGE_COUNT - 1)}>→</button>
+      </div>
+    </div>
+  );
+  // portal escapes the sponsors section's z-index stacking context, which
+  // otherwise leaves the fixed site header painted over the overlay
+  return full ? createPortal(viewer, document.body) : viewer;
+}
+
 function CopyEmailButton({ label }: { label: string }) {
   const [copied, setCopied] = useState(false);
   return (
@@ -22,7 +90,7 @@ function CopyEmailButton({ label }: { label: string }) {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       }}
-      style={{ display: 'inline-block', padding: '13px 28px', borderRadius: 999, border: 0, cursor: 'pointer', background: '#086727', color: '#eaf2ee', fontWeight: 700, fontSize: 17, fontFamily: RESIPLE }}
+      style={{ display: 'inline-block', padding: '13px 28px', border: 0, cursor: 'pointer', background: '#086727', color: '#eaf2ee', fontWeight: 700, fontSize: 17, fontFamily: RESIPLE }}
     >
       {copied ? 'Copied cugeodata@cornell.edu' : label}
     </button>
@@ -39,16 +107,19 @@ function AlumniPit({ alumni }: { alumni: typeof ALUMNI }) {
   useEffect(() => {
     const wrap = wrapRef.current;
     if (!wrap) return;
-    const R = window.innerWidth < 720 ? 40 : 60;
-    interface Ball { el: HTMLElement; x: number; y: number; vx: number; vy: number }
+    const R = window.innerWidth < 720 ? 50 : 60;
+    interface Ball { el: HTMLElement; x: number; y: number; vx: number; vy: number; sleep: number; rx: number; ry: number }
     const balls: Ball[] = Array.from(wrap.children as HTMLCollectionOf<HTMLElement>).map((el, i) => {
       el.style.width = el.style.height = `${R * 2}px`;
       // spawn stacked above the pit so they rain in on arrival
-      return { el, x: R + Math.random() * Math.max(1, wrap.clientWidth - 2 * R), y: -R - i * R * 2.4, vx: (Math.random() - 0.5) * 120, vy: 0 };
+      const x = R + Math.random() * Math.max(1, wrap.clientWidth - 2 * R);
+      const y = -R - i * R * 2.4;
+      return { el, x, y, vx: (Math.random() - 0.5) * 120, vy: 0, sleep: 0, rx: x, ry: y };
     });
     let W = wrap.clientWidth;
     let H = wrap.clientHeight;
-    const onResize = () => { W = wrap.clientWidth; H = wrap.clientHeight; };
+    // wake everyone on resize - the walls/floor moved out from under sleepers
+    const onResize = () => { W = wrap.clientWidth; H = wrap.clientHeight; for (const b of balls) b.sleep = 0; };
     window.addEventListener('resize', onResize);
 
     let dragged: Ball | null = null;
@@ -86,22 +157,30 @@ function AlumniPit({ alumni }: { alumni: typeof ALUMNI }) {
 
     const G = 1800;
     const REST = 0.78;
+    // frames (~0.5s) below ~30px/s before a ball naps: napping balls skip
+    // integration entirely, so a settled pile is rock still instead of
+    // trading gravity-fed micro-impulses through the stack forever
+    const SLEEP_AT = 30;
     let raf = 0;
     let last = performance.now();
     const step = (now: number) => {
       const dt = Math.min((now - last) / 1000, 0.033);
       last = now;
       for (const b of balls) {
-        if (b === dragged) continue;
+        if (b === dragged || b.sleep >= SLEEP_AT) continue;
         b.vy += G * dt;
         b.x += b.vx * dt;
         b.y += b.vy * dt;
         if (b.x < R) { b.x = R; b.vx = -b.vx * REST; }
         else if (b.x > W - R) { b.x = W - R; b.vx = -b.vx * REST; }
         // no ceiling - a hard throw arcs out the top and falls back in
-        if (b.y > H - R) { b.y = H - R; b.vy = -b.vy * REST; b.vx *= 0.96; }
+        // slow floor contacts don't rebound, otherwise gravity feeds a
+        // tiny bounce every frame and the pile vibrates forever
+        if (b.y > H - R) { b.y = H - R; b.vy = -b.vy * REST; b.vx *= 0.96; if (-b.vy < 60) b.vy = 0; }
       }
       // ponytail: O(n²) pair collisions - fine for a few dozen logos, grid-hash if the list ever gets big
+      // two solver passes stiffen the stack so balls don't sink and re-push each frame
+      for (let iter = 0; iter < 2; iter++) {
       for (let i = 0; i < balls.length; i++) {
         for (let j = i + 1; j < balls.length; j++) {
           const a = balls[i];
@@ -114,16 +193,42 @@ function AlumniPit({ alumni }: { alumni: typeof ALUMNI }) {
           const d = Math.sqrt(d2);
           const nx = dx / d;
           const ny = dy / d;
-          const push = (min - d) / 2;
-          if (a !== dragged) { a.x -= nx * push; a.y -= ny * push; }
-          if (b !== dragged) { b.x += nx * push; b.y += ny * push; }
           const rvn = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
+          // wake nappers only on a real disturbance: the dragged ball, or a
+          // neighbor arriving fast (real impacts come in at 300+px/s; the
+          // settling pile's velocity churn stays under ~100). Never touch an
+          // awake ball's counter here - drift alone decides who falls asleep.
+          if (a === dragged || b === dragged || Math.abs(rvn) > 150) {
+            if (a !== dragged && a.sleep >= SLEEP_AT) a.sleep = 0;
+            if (b !== dragged && b.sleep >= SLEEP_AT) b.sleep = 0;
+          }
+          const aStill = a === dragged || a.sleep >= SLEEP_AT;
+          const bStill = b === dragged || b.sleep >= SLEEP_AT;
+          if (aStill && bStill) continue;
+          const push = (min - d) / 2;
+          if (!aStill) { a.x -= nx * push; a.y -= ny * push; }
+          if (!bStill) { b.x += nx * push; b.y += ny * push; }
           if (rvn < 0) {
-            const imp = (-(1 + REST) * rvn) / 2;
-            if (a !== dragged) { a.vx -= imp * nx; a.vy -= imp * ny; }
-            if (b !== dragged) { b.vx += imp * nx; b.vy += imp * ny; }
+            // restitution only on fast impacts; slow contacts resolve dead
+            const imp = (-(1 + (rvn < -80 ? REST : 0)) * rvn) / 2;
+            if (!aStill) { a.vx -= imp * nx; a.vy -= imp * ny; }
+            if (!bStill) { b.vx += imp * nx; b.vy += imp * ny; }
           }
         }
+      }
+      }
+      for (const b of balls) {
+        if (b === dragged) { b.sleep = 0; b.rx = b.x; b.ry = b.y; continue; }
+        if (b.sleep >= SLEEP_AT) continue;
+        // collision pushes can shove past the wall/floor clamp - re-clamp so
+        // nobody falls asleep poking out of the pit
+        if (b.x < R) b.x = R;
+        else if (b.x > W - R) b.x = W - R;
+        if (b.y > H - R) b.y = H - R;
+        // sleep on net drift, not instantaneous speed - resting balls trade
+        // micro-impulses every frame that never take them anywhere
+        if (Math.hypot(b.x - b.rx, b.y - b.ry) < 2) { if (++b.sleep >= SLEEP_AT) { b.vx = 0; b.vy = 0; } }
+        else { b.rx = b.x; b.ry = b.y; b.sleep = 0; }
       }
       for (const b of balls) b.el.style.transform = `translate(${b.x - R}px, ${b.y - R}px)`;
       raf = requestAnimationFrame(step);
@@ -149,7 +254,7 @@ function AlumniPit({ alumni }: { alumni: typeof ALUMNI }) {
   }, []);
 
   return (
-    <div ref={wrapRef} style={{ position: 'relative', height: 'clamp(340px,48vw,500px)', overflow: 'hidden', touchAction: 'none', cursor: 'grab', background: '#121a23', WebkitTapHighlightColor: 'transparent', userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' }}>
+    <div ref={wrapRef} className="alumni-pit" style={{ position: 'relative', height: 'clamp(340px,48vw,500px)', overflow: 'hidden', touchAction: 'none', cursor: 'grab', background: '#121a23', WebkitTapHighlightColor: 'transparent', userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' }}>
       {alumni.map((a, i) => (
         <div key={i} title={a.place} style={{ position: 'absolute', top: 0, left: 0, transform: 'translate(-100vw,0)', borderRadius: 999, background: '#e6ecf0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', willChange: 'transform' }}>
           {a.logo ? (
@@ -346,18 +451,11 @@ export default function App() {
           <p style={{ ...BODY, maxWidth: 620, margin: '26px 0 0' }}>Every instrument we deploy is designed, built, and tested by students. Sponsor support directly funds the hardware, fieldwork, and research that make our projects possible.</p>
           <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 34 }}>
             <CopyEmailButton label="Become a sponsor" />
-            <a href={SPONSOR_PACKET_PDF} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', padding: '13px 28px', borderRadius: 999, border: '1px solid rgba(255,255,255,0.18)', color: '#e6ecf0', fontWeight: 700, fontSize: 17, fontFamily: RESIPLE }}>Download the packet (PDF)</a>
+            <a href={SPONSOR_PACKET_PDF} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', padding: '13px 28px', border: '1px solid rgba(255,255,255,0.18)', color: '#e6ecf0', fontWeight: 700, fontSize: 17, fontFamily: RESIPLE }}>Download the packet (PDF)</a>
           </div>
 
           {/* PACKET BOARD */}
-          <div className="team-photo-frame packet-board" style={{ padding: 14, border: '2px solid #086727', boxShadow: '10px 10px 0 rgba(8,103,39,0.35)', marginTop: 64 }}>
-            <object data={`${SPONSOR_PACKET_PDF}#view=FitH`} type="application/pdf" aria-label="GeoData sponsorship packet" style={{ display: 'block', width: '100%', height: 'min(75vh, 780px)', background: '#1a2430' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, height: '100%', padding: 24, textAlign: 'center' }}>
-                <p style={{ color: '#a9bcc6', margin: 0, maxWidth: 420, lineHeight: 1.6 }}>Your browser doesn't show PDFs inline, so grab the packet directly instead.</p>
-                <a href={SPONSOR_PACKET_PDF} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', padding: '11px 24px', borderRadius: 999, background: '#086727', color: '#eaf2ee', fontWeight: 700, fontFamily: RESIPLE }}>Open the sponsorship packet</a>
-              </div>
-            </object>
-          </div>
+          <PacketViewer />
 
           {/* TIERS */}
           <div style={{ marginTop: 110 }}>

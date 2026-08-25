@@ -65,7 +65,7 @@ export function MembersPage() {
                               type="button"
                               aria-label={`Copy ${m.email}`}
                               onClick={(e) => { e.stopPropagation(); copyEmail(m.email); }}
-                              style={{ fontFamily: RESIPLE, fontSize: 11, padding: '3px 10px', borderRadius: 999, border: `1px solid ${copiedEmail === m.email ? color : 'rgba(255,255,255,0.25)'}`, background: 'transparent', color: copiedEmail === m.email ? color : '#a9bcc6', cursor: 'pointer' }}
+                              style={{ fontFamily: RESIPLE, fontSize: 11, padding: '3px 10px', border: `1px solid ${copiedEmail === m.email ? color : 'rgba(255,255,255,0.25)'}`, background: 'transparent', color: copiedEmail === m.email ? color : '#a9bcc6', cursor: 'pointer' }}
                             >
                               {copiedEmail === m.email ? 'Copied ✓' : 'Copy'}
                             </button>

@@ -150,9 +150,9 @@ details[open] > summary .chev::before {
 }
 
 @media (max-width: 720px) {
-  /* inline PDF viewers are unreliable on phones; the download button covers it */
-  .packet-board {
-    display: none !important;
+  /* narrow pit can't spread the balls sideways, so give it room downward */
+  .alumni-pit {
+    height: 620px !important;
   }
 
   /* stack post rows so text isn't squeezed beside the thumbnail */

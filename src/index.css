@@ -37,6 +37,21 @@
   font-weight: bold;
 }
 
+/* long-form reading face for post bodies */
+@font-face {
+  font-display: swap;
+  font-family: 'Source Serif 4';
+  src: url('/fonts/source-serif-4.ttf');
+  font-weight: normal;
+}
+
+@font-face {
+  font-display: swap;
+  font-family: 'Source Serif 4';
+  src: url('/fonts/source-serif-4-bold.ttf');
+  font-weight: bold;
+}
+
 html,
 body {
   margin: 0;

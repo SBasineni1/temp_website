@@ -40,8 +40,6 @@ export class GlobeEngine {
   baseRotX = 0;
 
   stars!: THREE.Points<THREE.BufferGeometry, THREE.PointsMaterial>;
-  sat!: THREE.Group;
-  satBody!: THREE.Group;
   globeHit!: THREE.Mesh; // invisible sphere over the earth, for drag/wheel hit tests
 
   mount({ canvasEl, onNoWebGL }: MountArgs): void {
@@ -143,28 +141,15 @@ export class GlobeEngine {
       el.style.cursor = 'grab';
     };
     const cancel = (e: PointerEvent): void => { pointers.delete(e.pointerId); dragging = false; };
-    // zoom only when the wheel is over the globe itself, so the rest of the
-    // hero still scrolls the page normally (trackpad pinch arrives as
-    // ctrl+wheel, so it works too)
-    const wheel = (e: WheelEvent): void => {
-      // on mobile the globe fills most of the hero - let the wheel scroll the
-      // page there; pinch (two-pointer) zoom still works
-      if (this.isMobile) return;
-      if (castFrom(e).intersectObject(this.globeHit, false).length === 0) return;
-      e.preventDefault();
-      this.zoom = Math.max(0.2, Math.min(5, this.zoom * Math.exp(-e.deltaY * 0.0015)));
-    };
     el.addEventListener('pointerdown', down);
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
     window.addEventListener('pointercancel', cancel);
-    el.addEventListener('wheel', wheel, { passive: false });
     this._dragCleanup = () => {
       el.removeEventListener('pointerdown', down);
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
       window.removeEventListener('pointercancel', cancel);
-      el.removeEventListener('wheel', wheel);
     };
   }
 
@@ -228,13 +213,6 @@ export class GlobeEngine {
     scene.add(stars);
     this.stars = stars;
 
-    // empty satellite rig - the GLB is loaded into `body` by loadModels
-    const sat = new THREE.Group();
-    const body = new THREE.Group();
-    sat.add(body);
-    scene.add(sat);
-    this.sat = sat; this.satBody = body;
-
     this.loadModels(group, 1);
 
     // aim ~8° south of Ithaca so it's framed above center at a
@@ -282,12 +260,6 @@ export class GlobeEngine {
       // spin the model so its painted continents line up with the latLon math
       earth.rotation.y = 0.7;
       group.add(earth);
-      // the satellite is secondary - start it only after the earth is up so it
-      // never competes with it for bandwidth on mobile
-      loader.load('/models/satellite.glb', (g2) => {
-        this.satBody.clear();
-        this.satBody.add(fit(g2.scene, 0.33));
-      });
     });
   }
 
@@ -303,20 +275,6 @@ export class GlobeEngine {
     const targetScale = 1.25 * this.zoom;
     this.group.scale.setScalar(this.group.scale.x + (targetScale - this.group.scale.x) * 0.12);
     this.stars.rotation.y += 0.0004;
-
-    // satellite orbit (independent of earth surface spin)
-    const sat = this.sat;
-    const a = this.time * 0.42;
-    const orbR = 1.5 * this.group.scale.x;
-    const gx = this.group.position.x, gy = this.group.position.y;
-    sat.position.set(
-      gx + Math.cos(a) * orbR,
-      gy + Math.sin(a) * 0.42 * orbR,
-      Math.sin(a) * orbR
-    );
-    sat.scale.setScalar(this.group.scale.x);
-    sat.lookAt(gx, gy, 0);
-    this.satBody.rotation.y += 0.01;
 
     renderer.render(this.scene, this.camera);
   };

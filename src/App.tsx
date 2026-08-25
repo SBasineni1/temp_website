@@ -2,6 +2,18 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Globe from './Globe';
 import membersData from './members.json';
 
+// the two site fonts. Manti Sans is display-only (no period glyph - decimals
+// render as tofu), so anything numeric or body-sized uses Resiple.
+const RESIPLE = "'Resiple',sans-serif";
+const MANTI = "'Manti Sans',sans-serif";
+
+// shared text styles for the big section headings and their body copy
+const H2: React.CSSProperties = { fontFamily: MANTI, fontWeight: 700, fontSize: 'clamp(36px,4.8vw,60px)', letterSpacing: '-0.02em', lineHeight: 1.02, margin: '18px 0 0' };
+const BODY: React.CSSProperties = { fontSize: 17, lineHeight: 1.65, color: '#a9bcc6' };
+// recruitment call-to-action pills; PILL is the outlined variant, PILL_PRIMARY the filled one
+const PILL: React.CSSProperties = { display: 'inline-block', padding: '15px 32px', borderRadius: 999, border: '1px solid rgba(255,255,255,0.18)', color: '#e6ecf0', fontWeight: 700, fontSize: 18.5, fontFamily: RESIPLE };
+const PILL_PRIMARY: React.CSSProperties = { ...PILL, border: 0, background: '#086727', color: '#eaf2ee' };
+
 interface Member {
   name: string;
   subteam: string; // which grid section the card appears in
@@ -510,7 +522,7 @@ function CopyEmailButton({ label }: { label: string }) {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       }}
-      style={{ display: 'inline-block', padding: '13px 28px', borderRadius: 999, border: 0, cursor: 'pointer', background: '#086727', color: '#eaf2ee', fontWeight: 700, fontSize: 17, fontFamily: "'Resiple',sans-serif" }}
+      style={{ display: 'inline-block', padding: '13px 28px', borderRadius: 999, border: 0, cursor: 'pointer', background: '#086727', color: '#eaf2ee', fontWeight: 700, fontSize: 17, fontFamily: RESIPLE }}
     >
       {copied ? 'Copied cugeodata@cornell.edu' : label}
     </button>
@@ -643,7 +655,7 @@ function AlumniPit({ alumni }: { alumni: typeof ALUMNI }) {
           {a.logo ? (
             <img src={a.logo} alt={a.place} draggable={false} style={{ width: '68%', height: '68%', objectFit: 'contain', pointerEvents: 'none' }} />
           ) : (
-            <span style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 700, fontSize: 26, color: '#0e141c', pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}>{a.place.split(' ').map((w) => w[0]).join('').slice(0, 3)}</span>
+            <span style={{ fontFamily: MANTI, fontWeight: 700, fontSize: 26, color: '#0e141c', pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}>{a.place.split(' ').map((w) => w[0]).join('').slice(0, 3)}</span>
           )}
         </div>
       ))}
@@ -705,10 +717,16 @@ const EGG_CHANNELS: { key: string; label: string; unit: string; scale?: number; 
   { key: 'pressure', label: 'Pressure', unit: 'hPa', scale: 0.01 }, // Egg reports Pa
 ];
 
-// US EPA AQI breakpoints [Clow, Chigh, Ilow, Ihigh] (2024 PM2.5 revision)
-const AQI_BP: Record<'pm2p5' | 'pm10p0', number[][]> = {
+// US EPA AQI breakpoints [Clow, Chigh, Ilow, Ihigh] (2024 PM2.5 revision).
+// Gas breakpoints are the EPA 8h (O3, CO) / 1h (NO2, SO2) tables applied to
+// instantaneous readings, same simplification the PM badge already makes.
+const AQI_BP: Record<string, number[][]> = {
   pm2p5: [[0, 9, 0, 50], [9.1, 35.4, 51, 100], [35.5, 55.4, 101, 150], [55.5, 125.4, 151, 200], [125.5, 225.4, 201, 300], [225.5, 325.4, 301, 500]],
   pm10p0: [[0, 54, 0, 50], [55, 154, 51, 100], [155, 254, 101, 150], [255, 354, 151, 200], [355, 424, 201, 300], [425, 604, 301, 500]],
+  o3: [[0, 54, 0, 50], [55, 70, 51, 100], [71, 85, 101, 150], [86, 105, 151, 200], [106, 200, 201, 300], [201, 604, 301, 500]],
+  no2: [[0, 53, 0, 50], [54, 100, 51, 100], [101, 360, 101, 150], [361, 649, 151, 200], [650, 1249, 201, 300], [1250, 2049, 301, 500]],
+  so2: [[0, 35, 0, 50], [36, 75, 51, 100], [76, 185, 101, 150], [186, 304, 151, 200], [305, 604, 201, 300], [605, 1004, 301, 500]],
+  co: [[0, 4.4, 0, 50], [4.5, 9.4, 51, 100], [9.5, 12.4, 101, 150], [12.5, 15.4, 151, 200], [15.5, 30.4, 201, 300], [30.5, 50.4, 301, 500]],
 };
 
 function aqiFrom(conc: number, bp: number[][]): number {
@@ -727,9 +745,11 @@ const AQI_CATS: readonly (readonly [number, string, string])[] = [
 const aqiCat = (aqi: number) => AQI_CATS.find(([max]) => aqi <= max)!;
 
 type Rating = (v: number) => readonly [number, string, string];
-const RATINGS: Record<string, Rating> = {
-  pm2p5: (v) => aqiCat(aqiFrom(v, AQI_BP.pm2p5)),
-};
+// every channel with an EPA AQI standard gets a badge; PM1.0, CO2, and the
+// weather channels have no standard, so they stay unrated
+const RATINGS: Record<string, Rating> = Object.fromEntries(
+  Object.keys(AQI_BP).map((k) => [k, (v: number) => aqiCat(aqiFrom(v, AQI_BP[k]))]),
+);
 
 const fmtVal = (v: number) => (Math.abs(v) >= 100 ? Math.round(v).toLocaleString() : v.toFixed(1));
 // "PM2.5" -> PM₂.₅-style label; styled <sub>, since the custom fonts ship no subscript glyphs
@@ -762,18 +782,20 @@ function SensorChart({ label, unit, points, y0, minSpan, rating }: { label: stri
   return (
     <div style={{ background: '#141c26', padding: '18px 18px 14px' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-        <div style={{ fontFamily: "'Resiple',sans-serif", fontSize: 12, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#7c909b' }}>{subPM(label)}</div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, minWidth: 0 }}>
+          <div style={{ fontFamily: RESIPLE, fontSize: 12, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#7c909b' }}>{subPM(label)}</div>
+          {rating && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: RESIPLE, fontSize: 11.5, color: '#a9bcc6', whiteSpace: 'nowrap' }}>
+              <span style={{ width: 7, height: 7, borderRadius: 999, background: rating((hp ?? cur).v)[2], flexShrink: 0 }} />
+              {rating((hp ?? cur).v)[1]}
+            </div>
+          )}
+        </div>
         {/* Resiple, not Manti: Manti Sans has no period glyph, so decimals render as tofu */}
-        <div style={{ fontFamily: "'Resiple',sans-serif", fontWeight: 700, fontSize: 19, color: '#e6ecf0', whiteSpace: 'nowrap' }}>
+        <div style={{ fontFamily: RESIPLE, fontWeight: 700, fontSize: 19, color: '#e6ecf0', whiteSpace: 'nowrap' }}>
           {fmtVal((hp ?? cur).v)} <span style={{ fontSize: 12, fontWeight: 400, color: '#7c909b' }}>{unit}</span>
         </div>
       </div>
-      {rating && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, fontFamily: "'Resiple',sans-serif", fontSize: 11.5, color: '#a9bcc6' }}>
-          <span style={{ width: 7, height: 7, borderRadius: 999, background: rating((hp ?? cur).v)[2], flexShrink: 0 }} />
-          {rating((hp ?? cur).v)[1]}
-        </div>
-      )}
       <div
         onPointerMove={onMove}
         onPointerLeave={() => setHover(null)}
@@ -789,13 +811,13 @@ function SensorChart({ label, unit, points, y0, minSpan, rating }: { label: stri
         {hp && (
           <>
             <div style={{ position: 'absolute', left: `${X(hp)}%`, top: `${Y(hp)}%`, width: 8, height: 8, borderRadius: 999, background: '#4fae7d', border: '2px solid #141c26', transform: 'translate(-50%,-50%)', pointerEvents: 'none' }} />
-            <div style={{ position: 'absolute', left: `${Math.min(82, Math.max(18, X(hp)))}%`, bottom: '104%', transform: 'translateX(-50%)', background: '#1a2530', border: '1px solid rgba(255,255,255,0.12)', padding: '4px 10px', fontFamily: "'Resiple',sans-serif", fontSize: 11.5, color: '#c4d1d9', whiteSpace: 'nowrap', pointerEvents: 'none' }}>
+            <div style={{ position: 'absolute', left: `${Math.min(82, Math.max(18, X(hp)))}%`, bottom: '104%', transform: 'translateX(-50%)', background: '#1a2530', border: '1px solid rgba(255,255,255,0.12)', padding: '4px 10px', fontFamily: RESIPLE, fontSize: 11.5, color: '#c4d1d9', whiteSpace: 'nowrap', pointerEvents: 'none' }}>
               {fmtVal(hp.v)} {unit} {fmtTime(hp.t)}
             </div>
           </>
         )}
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontFamily: "'Resiple',sans-serif", fontSize: 10.5, letterSpacing: '0.08em', color: '#5f7078' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontFamily: RESIPLE, fontSize: 10.5, letterSpacing: '0.08em', color: '#5f7078' }}>
         <span>{fmtTime(t0)}</span>
         <span>{fmtTime(t1)}</span>
       </div>
@@ -823,13 +845,13 @@ function EggCharts({ series, unit }: { series: { key: string; points: EggPoint[]
   const cat = aqi != null ? aqiCat(aqi) : null;
   return (
     <div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '5px 14px', borderRadius: 999, border: `1px solid ${live ? '#4fae7d' : 'rgba(255,255,255,0.18)'}`, fontFamily: "'Resiple',sans-serif", fontSize: 12, letterSpacing: '0.1em', textTransform: 'uppercase', color: live ? '#4fae7d' : '#7c909b' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 22px' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontFamily: RESIPLE, fontSize: 12, letterSpacing: '0.1em', textTransform: 'uppercase', color: live ? '#4fae7d' : '#7c909b' }}>
           <span style={{ width: 8, height: 8, borderRadius: 999, background: live ? '#4fae7d' : '#5f7078' }} />
           {live ? 'Live' : 'Offline'} updated {fmtTime(newest)}
         </div>
         {aqi != null && cat && (
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '5px 14px', borderRadius: 999, border: '1px solid rgba(255,255,255,0.18)', fontFamily: "'Resiple',sans-serif", fontSize: 12, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#c4d1d9' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontFamily: RESIPLE, fontSize: 12, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#c4d1d9' }}>
             <span style={{ width: 8, height: 8, borderRadius: 999, background: cat[2] }} />
             US AQI {aqi} {cat[1]}
           </div>
@@ -854,6 +876,7 @@ function SensorsFeed() {
   const [state, setState] = useState<
     { status: 'loading' } | { status: 'error' } | { status: 'ready'; raw: Record<string, unknown> }
   >({ status: 'loading' });
+  const [unit, setUnit] = useState<'C' | 'F'>('C');
 
   useEffect(() => {
     let alive = true;
@@ -866,7 +889,6 @@ function SensorsFeed() {
     };
   }, []);
 
-  const [unit, setUnit] = useState<'C' | 'F'>('C');
   // parsing the multi-MB feed is expensive - do it once per fetch, not per render
   const parsed = useMemo(
     () => Object.fromEntries(EGGS.map((egg) => [egg.id, state.status === 'ready' ? eggSeries(state.raw[egg.id]) : []])),
@@ -879,7 +901,7 @@ function SensorsFeed() {
           row - inside it, a near-miss click collapses the whole section */}
       <div style={{ position: 'relative', marginTop: 32 }}>
       <details open>
-        <summary style={{ display: 'inline-flex', alignItems: 'center', gap: 10, minHeight: 37, fontFamily: "'Resiple',sans-serif", fontSize: 14, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#6d9dcd' }}>
+        <summary style={{ display: 'inline-flex', alignItems: 'center', gap: 10, minHeight: 37, fontFamily: RESIPLE, fontSize: 14, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#6d9dcd' }}>
           Air Quality
         </summary>
         {EGGS.map((egg) => {
@@ -888,14 +910,14 @@ function SensorsFeed() {
             <details key={egg.id} open style={{ background: '#141c26', border: '1px solid #6d9dcd', padding: 'clamp(20px,3.5vw,36px)', marginTop: 24 }}>
               <summary style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '8px 18px' }}>
                 <span className="chev" style={{ color: '#7c909b', alignSelf: 'center' }} />
-                <h3 style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 700, fontSize: 'clamp(24px,3vw,32px)', letterSpacing: '-0.015em', margin: 0 }}>{egg.name}</h3>
-                <span style={{ fontFamily: "'Resiple',sans-serif", fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#7c909b' }}>{egg.location}</span>
+                <h3 style={{ fontFamily: MANTI, fontWeight: 700, fontSize: 'clamp(24px,3vw,32px)', letterSpacing: '-0.015em', margin: 0 }}>{egg.name}</h3>
+                <span style={{ fontFamily: RESIPLE, fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#7c909b' }}>{egg.location}</span>
               </summary>
               <div style={{ marginTop: 28 }}>
                 {state.status === 'loading' ? (
-                  <div style={{ fontFamily: "'Resiple',sans-serif", fontSize: 14.5, color: '#7c909b' }}>Contacting the egg…</div>
+                  <div style={{ fontFamily: RESIPLE, fontSize: 14.5, color: '#7c909b' }}>Contacting the egg…</div>
                 ) : series.length === 0 ? (
-                  <div style={{ fontFamily: "'Resiple',sans-serif", fontSize: 14.5, color: '#7c909b' }}>The sensor feed is offline right now. Check back soon.</div>
+                  <div style={{ fontFamily: RESIPLE, fontSize: 14.5, color: '#7c909b' }}>The sensor feed is offline right now. Check back soon.</div>
                 ) : (
                   <EggCharts series={series} unit={unit} />
                 )}
@@ -906,7 +928,7 @@ function SensorsFeed() {
       </details>
       <div style={{ position: 'absolute', top: 0, right: 0, display: 'inline-flex', border: '2px solid rgba(255,255,255,0.3)', overflow: 'hidden' }}>
         {(['C', 'F'] as const).map((u) => (
-          <button key={u} onClick={() => setUnit(u)} style={{ appearance: 'none', border: 'none', cursor: 'pointer', padding: '8px 18px', fontFamily: "'Resiple',sans-serif", fontSize: 14, letterSpacing: '0.1em', background: unit === u ? '#4fae7d' : 'transparent', color: unit === u ? '#0e141c' : '#7c909b' }}>
+          <button key={u} onClick={() => setUnit(u)} style={{ appearance: 'none', border: 'none', cursor: 'pointer', padding: '8px 18px', fontFamily: RESIPLE, fontSize: 14, letterSpacing: '0.1em', background: unit === u ? '#4fae7d' : 'transparent', color: unit === u ? '#0e141c' : '#7c909b' }}>
             °{u}
           </button>
         ))}
@@ -918,8 +940,18 @@ function SensorsFeed() {
 
 export default function App() {
   const [route, setRoute] = useState(window.location.hash);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [postFilter, setPostFilter] = useState<'all' | 'project' | 'blog'>('all');
+  // key of the member tile currently flipped to its contact card
+  const [flippedMember, setFlippedMember] = useState<string | null>(null);
+  const [copiedEmail, setCopiedEmail] = useState<string | null>(null);
+
   const onPostsPage = route === '#/posts';
+  const onSponsorsPage = route === '#/sponsors';
+  const onSensorsPage = route === '#/sensors';
+  const legalPage = LEGAL_PAGES[route];
   const activePost = POSTS.find((p) => route === `#/posts/${p.slug}`);
+  const onSubPage = onPostsPage || !!activePost || onSponsorsPage || onSensorsPage || !!legalPage;
   // group consecutive paragraphs so each run gets one card while images sit outside on the page
   const postChunks: (string[] | { img: string; max?: number })[] = [];
   for (const para of activePost?.body ?? []) {
@@ -927,15 +959,7 @@ export default function App() {
     if (typeof para === 'string' && Array.isArray(last)) last.push(para);
     else postChunks.push(typeof para === 'string' ? [para] : para);
   }
-  const onSponsorsPage = route === '#/sponsors';
-  const onSensorsPage = route === '#/sensors';
-  const legalPage = LEGAL_PAGES[route];
-  const onSubPage = onPostsPage || !!activePost || onSponsorsPage || onSensorsPage || !!legalPage;
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [postFilter, setPostFilter] = useState<'all' | 'project' | 'blog'>('all');
-  // key of the member tile currently flipped to its contact card
-  const [flippedMember, setFlippedMember] = useState<string | null>(null);
-  const [copiedEmail, setCopiedEmail] = useState<string | null>(null);
+
   const copyEmail = (email: string) => {
     navigator.clipboard.writeText(email);
     setCopiedEmail(email);
@@ -964,7 +988,7 @@ export default function App() {
 
   return (
     <div style={{ position: 'relative', width: '100%', overflowX: 'clip', background: '#0e141c' }}>
-      <header className="site-header" style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 42px', background: 'rgba(14,20,28,0.85)', fontFamily: "'Resiple',sans-serif" }}>
+      <header className="site-header" style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 42px', background: 'rgba(14,20,28,0.85)', fontFamily: RESIPLE }}>
         <a href="#top" className="logo-link" style={{ display: 'flex', alignItems: 'center', gap: 12, color: '#e6ecf0', flexShrink: 0 }}>
           <img src="/logo.png" alt="" style={{ width: 78, height: 78, flexShrink: 0 }} />
           <span className="logo-text" style={{ fontFamily: "'Intan',sans-serif", fontWeight: 700, fontSize: 33, letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>GeoData</span>
@@ -977,7 +1001,7 @@ export default function App() {
             <a href="#/posts" style={{ color: '#a9bcc6' }}>Posts</a>
             <a href="#/sensors" style={{ color: '#a9bcc6' }}>Sensors</a>
           </div>
-          <a href="#join" className="nav-join-btn" style={{ display: 'inline-block', padding: '9px 20px', borderRadius: 999, background: '#086727', color: '#eaf2ee', fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0, fontFamily: "'Resiple',sans-serif" }}>Join the team</a>
+          <a href="#join" className="nav-join-btn" style={{ display: 'inline-block', padding: '9px 20px', borderRadius: 999, background: '#086727', color: '#eaf2ee', fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0, fontFamily: RESIPLE }}>Join the team</a>
           <button
             type="button"
             className="nav-burger"
@@ -994,7 +1018,7 @@ export default function App() {
         {menuOpen && (
           // hashchange closes the menu on navigation; this onClick covers taps
           // on the link matching the current hash, which fire no hashchange
-          <nav className="nav-menu" onClick={() => setMenuOpen(false)} style={{ position: 'absolute', top: '100%', left: 0, right: 0, display: 'none', flexDirection: 'column', background: 'rgba(14,20,28,0.97)', borderBottom: '1px solid rgba(255,255,255,0.1)', padding: '6px 24px 18px', fontFamily: "'Resiple',sans-serif" }}>
+          <nav className="nav-menu" onClick={() => setMenuOpen(false)} style={{ position: 'absolute', top: '100%', left: 0, right: 0, display: 'none', flexDirection: 'column', background: 'rgba(14,20,28,0.97)', borderBottom: '1px solid rgba(255,255,255,0.1)', padding: '6px 24px 18px', fontFamily: RESIPLE }}>
             {[['#projects', 'Projects'], ['#members', 'Members'], ['#/sponsors', 'Sponsors'], ['#/posts', 'Posts'], ['#/sensors', 'Sensors'], ['#join', 'Join the team']].map(([href, label]) => (
               <a key={href} href={href} style={{ color: '#e6ecf0', fontSize: 17, fontWeight: 700, padding: '13px 0', borderTop: '1px solid rgba(255,255,255,0.08)' }}>{label}</a>
             ))}
@@ -1007,10 +1031,10 @@ export default function App() {
       {activePost ? (
       <section style={{ position: 'relative', zIndex: 2, background: '#0e141c', padding: '150px clamp(24px,5vw,72px) 110px', minHeight: '100vh' }}>
         <div style={{ maxWidth: 920, margin: '0 auto' }}>
-          <a href="#/posts" style={{ fontFamily: "'Resiple',sans-serif", fontSize: 14.5 }}>← All posts</a>
-          <div style={{ fontFamily: "'Resiple',sans-serif", fontSize: 13, letterSpacing: '0.16em', textTransform: 'uppercase', color: activePost.tagColor, marginTop: 30 }}>{fmtTag(activePost.tag)}</div>
-          <h2 style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 700, fontSize: 'clamp(34px,4.6vw,56px)', letterSpacing: '-0.02em', lineHeight: 1.05, margin: '16px 0 0' }}>{activePost.title}</h2>
-          <div style={{ fontFamily: "'Resiple',sans-serif", fontSize: 12.5, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#7c909b', marginTop: 18 }}>{activePost.date}</div>
+          <a href="#/posts" style={{ fontFamily: RESIPLE, fontSize: 14.5 }}>← All posts</a>
+          <div style={{ fontFamily: RESIPLE, fontSize: 13, letterSpacing: '0.16em', textTransform: 'uppercase', color: activePost.tagColor, marginTop: 30 }}>{fmtTag(activePost.tag)}</div>
+          <h2 style={{ fontFamily: MANTI, fontWeight: 700, fontSize: 'clamp(34px,4.6vw,56px)', letterSpacing: '-0.02em', lineHeight: 1.05, margin: '16px 0 0' }}>{activePost.title}</h2>
+          <div style={{ fontFamily: RESIPLE, fontSize: 12.5, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#7c909b', marginTop: 18 }}>{activePost.date}</div>
           <div className="team-photo-frame" style={{ padding: 14, border: `2px solid ${activePost.tagColor}`, marginTop: 56 }}>
             {activePost.photo ? (
               <img decoding="async" src={activePost.photo} alt="" style={{ display: 'block', width: '100%', aspectRatio: '16/9', objectFit: 'cover' }} />
@@ -1023,11 +1047,11 @@ export default function App() {
             Array.isArray(chunk) ? (
               <div key={i} style={{ background: '#17212c', border: '1px solid rgba(255,255,255,0.07)', padding: 'clamp(24px,5vw,56px)', maxWidth: 760, margin: `${i === 0 ? 56 : 48}px auto 0` }}>
                 {chunk.map((para, j) => (
-                  <p key={j} style={{ fontSize: 18.5, lineHeight: 1.85, color: '#c4d1d9', margin: j === 0 ? 0 : '36px 0 0' }}>{emphasize(para)}</p>
+                  <p key={j} style={{ fontFamily: "'Source Serif 4',Georgia,serif", fontSize: 17.5, lineHeight: 1.85, color: '#c4d1d9', margin: j === 0 ? 0 : '36px 0 0' }}>{emphasize(para)}</p>
                 ))}
               </div>
             ) : (
-              <div key={i} className="team-photo-frame" style={{ padding: 14, border: `2px solid ${activePost.tagColor}`, maxWidth: chunk.max, margin: `${i === 0 ? 56 : 48}px auto 0` }}>
+              <div key={i} className="team-photo-frame" style={{ padding: 14, border: `2px solid ${activePost.tagColor}`, maxWidth: chunk.max ?? 640, margin: `${i === 0 ? 56 : 48}px auto 0` }}>
                 <img loading="lazy" decoding="async" src={chunk.img} alt="" style={{ display: 'block', width: '100%', height: 'auto' }} />
               </div>
             )
@@ -1036,7 +1060,7 @@ export default function App() {
             <div style={{ background: '#17212c', border: '1px solid rgba(255,255,255,0.07)', padding: 'clamp(24px,5vw,56px)', maxWidth: 760, margin: '48px auto 0' }}>
               {activePost.links.length > 0 && (
                 <>
-                  <div style={{ fontFamily: "'Resiple',sans-serif", fontSize: 13, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#4fae7d' }}>Links</div>
+                  <div style={{ fontFamily: RESIPLE, fontSize: 13, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#4fae7d' }}>Links</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 20 }}>
                     {activePost.links.map((link) => (
                       <a key={link.label} href={link.href} target={link.href.startsWith('http') ? '_blank' : undefined} rel="noopener noreferrer" style={{ fontSize: 16.5, alignSelf: 'flex-start', color: '#4fae7d' }}>{link.label} ↗</a>
@@ -1045,7 +1069,7 @@ export default function App() {
                 </>
               )}
               {activePost.credit && (
-                <div style={{ marginTop: activePost.links.length > 0 ? 28 : 0, fontFamily: "'Resiple',sans-serif", fontSize: 12.5, letterSpacing: '0.06em', color: '#7c909b' }}>{activePost.credit}</div>
+                <div style={{ marginTop: activePost.links.length > 0 ? 28 : 0, fontFamily: RESIPLE, fontSize: 12.5, letterSpacing: '0.06em', color: '#7c909b' }}>{activePost.credit}</div>
               )}
             </div>
           )}
@@ -1054,14 +1078,14 @@ export default function App() {
       ) : onPostsPage ? (
       <section style={{ position: 'relative', zIndex: 2, background: '#0e141c', padding: '150px clamp(24px,5vw,72px) 110px', minHeight: '100vh' }}>
         <div style={{ maxWidth: 940, margin: '0 auto' }}>
-          <h2 style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 700, fontSize: 'clamp(36px,4.8vw,60px)', letterSpacing: '-0.02em', lineHeight: 1.02, margin: '18px 0 0' }}>Posts</h2>
-          <div style={{ display: 'flex', gap: 10, marginTop: 36 }}>
-            {([['all', 'All'], ['project', 'Projects'], ['blog', 'Blog']] as const).map(([value, label]) => (
+          <h2 style={H2}>Posts</h2>
+          <div style={{ display: 'flex', gap: 26, marginTop: 36 }}>
+            {([['all', 'All'], ['project', 'Projects'], ['blog', 'Blogs']] as const).map(([value, label]) => (
               <button
                 key={value}
                 type="button"
                 onClick={() => setPostFilter(value)}
-                style={{ fontFamily: "'Resiple',sans-serif", fontSize: 13.5, fontWeight: 700, letterSpacing: '0.04em', padding: '8px 20px', borderRadius: 999, cursor: 'pointer', border: `1px solid ${postFilter === value ? '#086727' : 'rgba(255,255,255,0.18)'}`, background: postFilter === value ? '#086727' : 'transparent', color: postFilter === value ? '#eaf2ee' : '#a9bcc6' }}
+                style={{ appearance: 'none', background: 'transparent', border: 'none', cursor: 'pointer', padding: '0 0 6px', fontFamily: RESIPLE, fontSize: 17, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: postFilter === value ? '#e6ecf0' : '#7c909b', borderBottom: `2px solid ${postFilter === value ? '#4fae7d' : 'transparent'}` }}
               >
                 {label}
               </button>
@@ -1072,11 +1096,10 @@ export default function App() {
               <article key={post.slug} style={i === 0 ? undefined : { borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: 44, paddingTop: 44 }}>
                 <a href={`#/posts/${post.slug}`} className="post-link post-row" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) clamp(130px,30vw,300px)', gap: 'clamp(18px,3.5vw,44px)', alignItems: 'center' }}>
                   <div>
-                    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px 8px', fontFamily: "'Resiple',sans-serif", fontSize: 12, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#7c909b' }}>
-                      <span style={{ border: `1px solid ${post.kind === 'project' ? '#4fae7d' : '#dcbe32'}`, color: post.kind === 'project' ? '#4fae7d' : '#dcbe32', borderRadius: 999, padding: '2px 10px', fontSize: 10.5 }}>{post.kind === 'project' ? 'Project' : 'Blog'}</span>
-                      <span>{post.date} <span style={{ color: post.tagColor }}>{fmtTag(post.tag)}</span></span>
+                    <div style={{ fontFamily: RESIPLE, fontSize: 12, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#7c909b' }}>
+                      {post.date} <span style={{ color: post.tagColor }}>{fmtTag(post.tag)}</span>
                     </div>
-                    <h3 style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 700, fontSize: 'clamp(24px,3.2vw,34px)', letterSpacing: '-0.015em', lineHeight: 1.12, margin: '14px 0 0' }}>{post.title}</h3>
+                    <h3 style={{ fontFamily: MANTI, fontWeight: 700, fontSize: 'clamp(24px,3.2vw,34px)', letterSpacing: '-0.015em', lineHeight: 1.12, margin: '14px 0 0' }}>{post.title}</h3>
                     <p style={{ fontSize: 16, lineHeight: 1.6, color: '#a9bcc6', margin: '14px 0 0' }}>{post.dek}</p>
                   </div>
                   <div style={{ padding: 10, border: `2px solid ${post.tagColor}` }}>
@@ -1095,18 +1118,18 @@ export default function App() {
       ) : onSensorsPage ? (
       <section style={{ position: 'relative', zIndex: 2, background: '#0e141c', padding: '150px clamp(24px,5vw,72px) 110px', minHeight: '100vh' }}>
         <div style={{ maxWidth: 1180, margin: '0 auto' }}>
-          <h2 style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 700, fontSize: 'clamp(36px,4.8vw,60px)', letterSpacing: '-0.02em', lineHeight: 1.02, margin: '18px 0 0' }}>Active Sensors</h2>
+          <h2 style={H2}>Active Sensors</h2>
           <SensorsFeed />
         </div>
       </section>
       ) : onSponsorsPage ? (
       <section style={{ position: 'relative', zIndex: 2, background: '#0e141c', padding: '150px clamp(24px,5vw,72px) 110px', minHeight: '100vh' }}>
         <div style={{ maxWidth: 1180, margin: '0 auto' }}>
-          <h2 style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 700, fontSize: 'clamp(36px,4.8vw,60px)', letterSpacing: '-0.02em', lineHeight: 1.02, margin: '18px 0 0' }}>Sponsorship</h2>
-          <p style={{ fontSize: 17, lineHeight: 1.65, color: '#a9bcc6', maxWidth: 620, margin: '26px 0 0' }}>Every instrument we field, from sensors and sondes to six-legged robots, is designed, built, and broken in by students. Sponsors are what keep the hardware in the water and the team in waders.</p>
+          <h2 style={H2}>Sponsorship</h2>
+          <p style={{ ...BODY, maxWidth: 620, margin: '26px 0 0' }}>Every instrument we deploy is designed, built, and tested by students. Sponsor support directly funds the hardware, fieldwork, and research that make our projects possible.</p>
           <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 34 }}>
             <CopyEmailButton label="Become a sponsor" />
-            <a href={SPONSOR_PACKET_PDF} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', padding: '13px 28px', borderRadius: 999, border: '1px solid rgba(255,255,255,0.18)', color: '#e6ecf0', fontWeight: 700, fontSize: 17, fontFamily: "'Resiple',sans-serif" }}>Download the packet (PDF)</a>
+            <a href={SPONSOR_PACKET_PDF} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', padding: '13px 28px', borderRadius: 999, border: '1px solid rgba(255,255,255,0.18)', color: '#e6ecf0', fontWeight: 700, fontSize: 17, fontFamily: RESIPLE }}>Download the packet (PDF)</a>
           </div>
 
           {/* PACKET BOARD */}
@@ -1114,19 +1137,19 @@ export default function App() {
             <object data={`${SPONSOR_PACKET_PDF}#view=FitH`} type="application/pdf" aria-label="GeoData sponsorship packet" style={{ display: 'block', width: '100%', height: 'min(75vh, 780px)', background: '#1a2430' }}>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, height: '100%', padding: 24, textAlign: 'center' }}>
                 <p style={{ color: '#a9bcc6', margin: 0, maxWidth: 420, lineHeight: 1.6 }}>Your browser doesn't show PDFs inline, so grab the packet directly instead.</p>
-                <a href={SPONSOR_PACKET_PDF} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', padding: '11px 24px', borderRadius: 999, background: '#086727', color: '#eaf2ee', fontWeight: 700, fontFamily: "'Resiple',sans-serif" }}>Open the sponsorship packet</a>
+                <a href={SPONSOR_PACKET_PDF} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', padding: '11px 24px', borderRadius: 999, background: '#086727', color: '#eaf2ee', fontWeight: 700, fontFamily: RESIPLE }}>Open the sponsorship packet</a>
               </div>
             </object>
           </div>
 
           {/* TIERS */}
           <div style={{ marginTop: 110 }}>
-            <h3 style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 700, fontSize: 'clamp(28px,3.4vw,40px)', letterSpacing: '-0.02em', margin: '16px 0 0' }}>Sponsorship tiers</h3>
+            <h3 style={{ fontFamily: MANTI, fontWeight: 700, fontSize: 'clamp(28px,3.4vw,40px)', letterSpacing: '-0.02em', margin: '16px 0 0' }}>Sponsorship tiers</h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(240px,100%),1fr))', gap: 26, marginTop: 44 }}>
               {TIERS.map((tier) => (
                 <div key={tier.name} style={{ background: '#141c26', borderTop: `3px solid ${tier.color}`, padding: '26px 24px' }}>
-                  <div style={{ fontFamily: "'Resiple',sans-serif", fontSize: 12, letterSpacing: '0.16em', textTransform: 'uppercase', color: tier.color }}>{tier.name}</div>
-                  <div style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 700, fontSize: 34, marginTop: 12 }}>{tier.amount}</div>
+                  <div style={{ fontFamily: RESIPLE, fontSize: 12, letterSpacing: '0.16em', textTransform: 'uppercase', color: tier.color }}>{tier.name}</div>
+                  <div style={{ fontFamily: MANTI, fontWeight: 700, fontSize: 34, marginTop: 12 }}>{tier.amount}</div>
                   <ul style={{ margin: '18px 0 0', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {tier.perks.map((perk) => (
                       <li key={perk} style={{ position: 'relative', paddingLeft: 18, fontSize: 14.5, lineHeight: 1.5, color: '#a9bcc6' }}>
@@ -1141,8 +1164,7 @@ export default function App() {
 
           {/* ALUMNI */}
           <div style={{ marginTop: 130 }}>
-            <h2 style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 700, fontSize: 'clamp(36px,4.8vw,60px)', letterSpacing: '-0.02em', lineHeight: 1.02, margin: '18px 0 0' }}>Alumni</h2>
-            <p style={{ fontSize: 17, lineHeight: 1.65, color: '#a9bcc6', maxWidth: 620, margin: '26px 0 0' }}>GeoData alumni have landed at the organizations, companies, and labs below. Go ahead and toss them around; they're used to landing on their feet.</p>
+            <h2 style={H2}>Alumni Ball Pit</h2>
             <div className="team-photo-frame" style={{ padding: 14, border: '2px solid #086727', boxShadow: '10px 10px 0 rgba(8,103,39,0.35)', marginTop: 40 }}>
               <AlumniPit alumni={ALUMNI} />
             </div>
@@ -1155,12 +1177,12 @@ export default function App() {
       ) : legalPage ? (
       <section style={{ position: 'relative', zIndex: 2, background: '#0e141c', padding: '150px clamp(24px,5vw,72px) 110px', minHeight: '100vh' }}>
         <div style={{ maxWidth: 820, margin: '0 auto' }}>
-          <div style={{ fontFamily: "'Resiple',sans-serif", fontSize: 13, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#4fae7d' }}>CU GeoData</div>
-          <h2 style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 700, fontSize: 'clamp(36px,4.8vw,60px)', letterSpacing: '-0.02em', lineHeight: 1.02, margin: '18px 0 0' }}>{legalPage.title}</h2>
-          <div style={{ fontFamily: "'Resiple',sans-serif", fontSize: 13, color: '#7c909b', marginTop: 14 }}>Last updated: {legalPage.updated}</div>
+          <div style={{ fontFamily: RESIPLE, fontSize: 13, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#4fae7d' }}>CU GeoData</div>
+          <h2 style={H2}>{legalPage.title}</h2>
+          <div style={{ fontFamily: RESIPLE, fontSize: 13, color: '#7c909b', marginTop: 14 }}>Last updated: {legalPage.updated}</div>
           {legalPage.sections.map((s) => (
             <div key={s.h} style={{ marginTop: 44 }}>
-              <h3 style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 600, fontSize: 22, letterSpacing: '-0.01em', margin: 0 }}>{s.h}</h3>
+              <h3 style={{ fontFamily: MANTI, fontWeight: 600, fontSize: 22, letterSpacing: '-0.01em', margin: 0 }}>{s.h}</h3>
               {s.body.map((para, i) => (
                 <p key={i} style={{ fontSize: 15.5, lineHeight: 1.65, color: '#a9bcc6', margin: '12px 0 0', maxWidth: 680 }}>{para}</p>
               ))}
@@ -1175,7 +1197,9 @@ export default function App() {
       {/* PROJECTS */}
       <section id="projects" style={{ position: 'relative', zIndex: 2, background: '#0e141c', padding: '120px clamp(24px,5vw,72px) 48px' }}>
         <div style={{ maxWidth: 1180, margin: '0 auto' }}>
-          <h2 style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 700, fontSize: 'clamp(36px,4.8vw,60px)', letterSpacing: '-0.02em', lineHeight: 1.02, margin: '18px 0 0', maxWidth: '16ch' }}>Instruments built by students, deployed in the field</h2>
+          <h2 style={{ ...H2, maxWidth: '16ch' }}>Instruments built by students, deployed in the field</h2>
+          <p style={{ ...BODY, margin: '26px 0 0' }}>We are a Student Project Team at the intersection of the Earth Sciences, Engineering, Data Science, and beyond, focused on monitoring the world around us. We are the only Cornell project team affiliated with both the College of Engineering and the Department of Earth and Atmospheric Sciences, giving our members a unique opportunity to pursue true scientific research, experience hands-on engineering prototyping, and initiate, manage, and lead their own projects.</p>
+
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(420px,100%),1fr))', gap: 26, marginTop: 56 }}>
             {PROJECTS.map((proj) => (
               <article key={proj.title} style={{ gridColumn: proj.photo2 ? '1 / -1' : undefined }}>
@@ -1190,8 +1214,8 @@ export default function App() {
                   <div style={{ aspectRatio: '16/10', background: '#1a2430' }} />
                 )}
                 <div style={{ padding: '20px 0 0' }}>
-                  <div style={{ fontFamily: "'Resiple',sans-serif", fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: proj.tagColor }}>{fmtTag(proj.tag)}</div>
-                  <h3 style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 600, fontSize: 25, margin: '12px 0 0', letterSpacing: '-0.01em' }}>
+                  <div style={{ fontFamily: RESIPLE, fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: proj.tagColor }}>{fmtTag(proj.tag)}</div>
+                  <h3 style={{ fontFamily: MANTI, fontWeight: 600, fontSize: 25, margin: '12px 0 0', letterSpacing: '-0.01em' }}>
                     {proj.slug ? (
                       <a href={`#/posts/${proj.slug}`} className="post-link" aria-label={`Read the ${proj.title} post`}>{proj.title} <span aria-hidden="true" style={{ fontSize: 19, color: '#4fae7d' }}>→</span></a>
                     ) : (
@@ -1211,22 +1235,22 @@ export default function App() {
         <div style={{ maxWidth: 1180, margin: '0 auto' }}>
           <div className="members-head" style={{ display: 'flex', flexWrap: 'wrap', gap: '28px 48px', alignItems: 'flex-end', justifyContent: 'space-between' }}>
             <div>
-              <h2 style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 700, fontSize: 'clamp(36px,4.8vw,60px)', letterSpacing: '-0.02em', lineHeight: 1.02, margin: '18px 0 0' }}>Members</h2>
+              <h2 style={H2}>Members</h2>
             </div>
             <div className="members-stats" style={{ padding: '26px 36px', display: 'flex', gap: 48 }}>
               <div>
-                <div className="stat-num" style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 700, fontSize: 46, lineHeight: 1, color: '#4fae7d' }}>{SUBTEAM_COUNT}</div>
-                <div className="stat-label" style={{ fontFamily: "'Resiple',sans-serif", fontSize: 12, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#a9bcc6', marginTop: 10 }}>Subteams</div>
+                <div className="stat-num" style={{ fontFamily: MANTI, fontWeight: 700, fontSize: 46, lineHeight: 1, color: '#4fae7d' }}>{SUBTEAM_COUNT}</div>
+                <div className="stat-label" style={{ fontFamily: RESIPLE, fontSize: 12, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#a9bcc6', marginTop: 10 }}>Subteams</div>
               </div>
               <div>
-                <div className="stat-num" style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 700, fontSize: 46, lineHeight: 1, color: '#4fae7d' }}>{MEMBER_COUNT}</div>
-                <div className="stat-label" style={{ fontFamily: "'Resiple',sans-serif", fontSize: 12, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#a9bcc6', marginTop: 10 }}>Members</div>
+                <div className="stat-num" style={{ fontFamily: MANTI, fontWeight: 700, fontSize: 46, lineHeight: 1, color: '#4fae7d' }}>{MEMBER_COUNT}</div>
+                <div className="stat-label" style={{ fontFamily: RESIPLE, fontSize: 12, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#a9bcc6', marginTop: 10 }}>Members</div>
               </div>
             </div>
           </div>
           {[...new Set(MEMBERS.map((m) => m.subteam))].map((subteam) => (
             <div key={subteam} style={{ marginTop: 64 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontFamily: "'Resiple',sans-serif", fontSize: 17, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: SUBTEAM_COLORS[subteam] ?? '#7c909b' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontFamily: RESIPLE, fontSize: 17, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: SUBTEAM_COLORS[subteam] ?? '#7c909b' }}>
                 <span style={{ width: 12, height: 12, borderRadius: 3, background: SUBTEAM_COLORS[subteam] ?? '#7c909b', display: 'inline-block' }} />
                 {teamLabel(subteam)}
               </div>
@@ -1247,7 +1271,7 @@ export default function App() {
                             <div style={{ aspectRatio: '1/1', background: '#1a2430' }} />
                           )}
                           <div className="member-flip" style={{ position: 'absolute', inset: 0, background: 'rgba(12,18,24,0.82)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', border: `2px solid ${color}`, padding: 16, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 10 }}>
-                          <div style={{ fontFamily: "'Resiple',sans-serif", fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color }}>{m.role ?? (m.lead ? 'Subteam Lead' : 'Contact')}</div>
+                          <div style={{ fontFamily: RESIPLE, fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color }}>{m.role ?? (m.lead ? 'Subteam Lead' : 'Contact')}</div>
                           <div style={{ fontSize: 14.5, color: '#b6c6ce' }}>{m.major || 'Major TBD'}</div>
                           {m.email ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -1256,7 +1280,7 @@ export default function App() {
                                 type="button"
                                 aria-label={`Copy ${m.email}`}
                                 onClick={(e) => { e.stopPropagation(); copyEmail(m.email); }}
-                                style={{ fontFamily: "'Resiple',sans-serif", fontSize: 11, padding: '3px 10px', borderRadius: 999, border: `1px solid ${copiedEmail === m.email ? color : 'rgba(255,255,255,0.25)'}`, background: 'transparent', color: copiedEmail === m.email ? color : '#a9bcc6', cursor: 'pointer' }}
+                                style={{ fontFamily: RESIPLE, fontSize: 11, padding: '3px 10px', borderRadius: 999, border: `1px solid ${copiedEmail === m.email ? color : 'rgba(255,255,255,0.25)'}`, background: 'transparent', color: copiedEmail === m.email ? color : '#a9bcc6', cursor: 'pointer' }}
                               >
                                 {copiedEmail === m.email ? 'Copied ✓' : 'Copy'}
                               </button>
@@ -1265,7 +1289,7 @@ export default function App() {
                             <span style={{ fontSize: 13.5, color: '#5f7078' }}>Contact coming soon</span>
                           )}
                           {m.linkedin && (
-                            <a href={m.linkedin} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="member-linkedin" style={{ fontFamily: "'Resiple',sans-serif", fontSize: 12, letterSpacing: '0.06em', alignSelf: 'flex-start' }}>{m.linkedin.includes('scholar.google') ? 'Google Scholar' : 'LinkedIn'}</a>
+                            <a href={m.linkedin} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="member-linkedin" style={{ fontFamily: RESIPLE, fontSize: 12, letterSpacing: '0.06em', alignSelf: 'flex-start' }}>{m.linkedin.includes('scholar.google') ? 'Google Scholar' : 'LinkedIn'}</a>
                           )}
                           </div>
                         </div>
@@ -1286,9 +1310,9 @@ export default function App() {
                       {SUBTEAM_BADGES[m.badge ?? subteam] && (
                         <img className="member-badge" decoding="async" src={SUBTEAM_BADGES[m.badge ?? subteam]} alt={`${m.badge ?? subteam} team badge`} draggable={false} style={{ position: 'absolute', top: 8, right: 8, width: 36, height: 36, pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none' }} />
                       )}
-                      <div style={{ fontFamily: "'Resiple',sans-serif", fontWeight: 700, fontSize: 16.5, marginTop: 12 }}>{m.name}</div>
+                      <div style={{ fontFamily: RESIPLE, fontWeight: 700, fontSize: 16.5, marginTop: 12 }}>{m.name}</div>
                       {(m.role || m.lead) && (
-                        <div style={{ fontFamily: "'Resiple',sans-serif", fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color, marginTop: 4 }}>{m.role ?? 'Subteam Lead'}</div>
+                        <div style={{ fontFamily: RESIPLE, fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color, marginTop: 4 }}>{m.role ?? 'Subteam Lead'}</div>
                       )}
                     </div>
                   );
@@ -1310,7 +1334,7 @@ export default function App() {
       {/* JOIN */}
       <section id="join" style={{ position: 'relative', zIndex: 2, background: '#0e141c', padding: '130px clamp(24px,5vw,72px)' }}>
         <div style={{ maxWidth: 820 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontFamily: "'Resiple',sans-serif", fontSize: 20, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#4fae7d' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontFamily: RESIPLE, fontSize: 20, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#4fae7d' }}>
             {/* tethersonde stand-in for the usual "we're live" dot */}
             <svg className="balloon-bob" width="34" height="40" viewBox="-7 -7 34 40" fill="none" aria-hidden="true">
               {/* hand-drawn emphasis dashes radiating off the balloon */}
@@ -1326,12 +1350,12 @@ export default function App() {
             </svg>
             Recruitment open
           </div>
-          <h2 style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 700, fontSize: 'clamp(42px,6.2vw,80px)', letterSpacing: '-0.03em', lineHeight: 1, margin: '20px 0 0' }}>Design, Deploy,<br /><span style={{ color: '#4fae7d' }}>Discover</span></h2>
-          <p style={{ fontSize: 17, lineHeight: 1.65, color: '#a9bcc6', maxWidth: 560, margin: '26px 0 0' }}>Build the instruments a changing planet needs. GeoData welcomes students of every major, from CS and MechE to earth science and design. If you want to build hardware that ends up outdoors collecting real data, there's a subteam for you.</p>
+          <h2 style={{ fontFamily: MANTI, fontWeight: 700, fontSize: 'clamp(42px,6.2vw,80px)', letterSpacing: '-0.03em', lineHeight: 1, margin: '20px 0 0' }}>Design, Deploy,<br /><span style={{ color: '#4fae7d' }}>Discover</span></h2>
+          <p style={{ ...BODY, maxWidth: 560, margin: '26px 0 0' }}>Build the instruments a changing planet needs. GeoData welcomes students of every major, from CS and MechE to earth science and design. If you want to build hardware that ends up outdoors collecting real data, there's a subteam for you.</p>
           <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 38 }}>
-            <a href="https://docs.google.com/forms/d/e/1FAIpQLSfI87dxinWPeDd9aevwKjwfP0NtWR8uJDhHeD9qjdQPXV9oiA/viewform?usp=dialog" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', padding: '15px 32px', borderRadius: 999, background: '#086727', color: '#eaf2ee', fontWeight: 700, fontSize: 18.5, fontFamily: "'Resiple',sans-serif" }}>Upperclassmen Recruiting</a>
-            <a href="https://docs.google.com/forms/d/1u6mjjlEL9Y4fdN8RFB1K6jTpS7aYig-wt54i3YyhtS8/viewform" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', padding: '15px 32px', borderRadius: 999, border: '1px solid rgba(255,255,255,0.18)', color: '#e6ecf0', fontWeight: 700, fontSize: 18.5, fontFamily: "'Resiple',sans-serif" }}>Underclassmen Interest Form</a>
-            <a href="https://docs.google.com/spreadsheets/d/1ZYLfV6FjYPi1sL58lr9eAjuKM37q2tXTtEAOSyoPfpU/edit?usp=sharing" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', padding: '15px 32px', borderRadius: 999, border: '1px solid rgba(255,255,255,0.18)', color: '#e6ecf0', fontWeight: 700, fontSize: 18.5, fontFamily: "'Resiple',sans-serif" }}>Coffee Chat Contacts</a>
+            <a href="https://docs.google.com/forms/d/e/1FAIpQLSfI87dxinWPeDd9aevwKjwfP0NtWR8uJDhHeD9qjdQPXV9oiA/viewform?usp=dialog" target="_blank" rel="noopener noreferrer" style={PILL_PRIMARY}>Upperclassmen Recruiting</a>
+            <a href="https://docs.google.com/forms/d/1u6mjjlEL9Y4fdN8RFB1K6jTpS7aYig-wt54i3YyhtS8/viewform" target="_blank" rel="noopener noreferrer" style={PILL}>Underclassmen Interest Form</a>
+            <a href="https://docs.google.com/spreadsheets/d/1ZYLfV6FjYPi1sL58lr9eAjuKM37q2tXTtEAOSyoPfpU/edit?usp=sharing" target="_blank" rel="noopener noreferrer" style={PILL}>Coffee Chat Contacts</a>
           </div>
         </div>
       </section>
@@ -1344,7 +1368,7 @@ export default function App() {
         <div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '48px 72px', justifyContent: 'space-between' }}>
             <div style={{ flex: '1 1 220px' }}>
-              <span style={{ fontFamily: "'Manti Sans',sans-serif", fontWeight: 600, fontSize: 20 }}>CU GeoData</span>
+              <span style={{ fontFamily: MANTI, fontWeight: 600, fontSize: 20 }}>CU GeoData</span>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 14, fontSize: 14, color: '#5f7078' }}>
                 <span>Cornell University</span>
                 <span>Ithaca, NY</span>
@@ -1352,7 +1376,7 @@ export default function App() {
               <img src="/cornell-engineering.svg" alt="Cornell Duffield College of Engineering" style={{ display: 'block', height: 22, width: 'auto', maxWidth: '100%', marginTop: 20 }} />
             </div>
             <div style={{ flex: '1 1 220px' }}>
-              <div style={{ fontFamily: "'Resiple',sans-serif", fontSize: 12, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#7c909b' }}>Supported by</div>
+              <div style={{ fontFamily: RESIPLE, fontSize: 12, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#7c909b' }}>Supported by</div>
               <div className="partners-grid" style={{ display: 'grid', gridTemplateRows: 'repeat(2, auto)', gridAutoFlow: 'column', gridAutoColumns: 'max-content', gap: '8px 40px', marginTop: 14, fontSize: 14, color: '#a9bcc6' }}>
                 {PARTNERS.map((partner) => (
                   <span key={partner}>{partner}</span>
@@ -1361,7 +1385,7 @@ export default function App() {
             </div>
             <div style={{ flex: '1 1 220px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20 }}>
-                <span style={{ fontFamily: "'Resiple',sans-serif", fontSize: 12, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#7c909b' }}>Contact</span>
+                <span style={{ fontFamily: RESIPLE, fontSize: 12, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#7c909b' }}>Contact</span>
                 <div style={{ display: 'flex', gap: 16 }}>
                   <a href="https://www.instagram.com/cugeodata/" target="_blank" rel="noopener noreferrer" aria-label="CU GeoData on Instagram" style={{ color: '#a9bcc6', display: 'inline-flex' }}>
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0C8.74 0 8.333.015 7.053.072 5.775.132 4.905.333 4.14.63c-.789.306-1.459.717-2.126 1.384S.935 3.35.63 4.14C.333 4.905.131 5.775.072 7.053.012 8.333 0 8.74 0 12s.015 3.667.072 4.947c.06 1.277.261 2.148.558 2.913.306.788.717 1.459 1.384 2.126.667.666 1.336 1.079 2.126 1.384.766.296 1.636.499 2.913.558C8.333 23.988 8.74 24 12 24s3.667-.015 4.947-.072c1.277-.06 2.148-.262 2.913-.558.788-.306 1.459-.718 2.126-1.384.666-.667 1.079-1.335 1.384-2.126.296-.765.499-1.636.558-2.913.06-1.28.072-1.687.072-4.947s-.015-3.667-.072-4.947c-.06-1.277-.262-2.149-.558-2.913-.306-.789-.718-1.459-1.384-2.126C21.319 1.347 20.651.935 19.86.63c-.765-.297-1.636-.499-2.913-.558C15.667.012 15.26 0 12 0zm0 2.16c3.203 0 3.585.016 4.85.071 1.17.055 1.805.249 2.227.415.562.217.96.477 1.382.896.419.42.679.819.896 1.381.164.422.36 1.057.413 2.227.057 1.266.07 1.646.07 4.85s-.015 3.585-.074 4.85c-.061 1.17-.256 1.805-.421 2.227-.224.562-.479.96-.899 1.382-.419.419-.824.679-1.38.896-.42.164-1.065.36-2.235.413-1.274.057-1.649.07-4.859.07-3.211 0-3.586-.015-4.859-.074-1.171-.061-1.816-.256-2.236-.421-.569-.224-.96-.479-1.379-.899-.421-.419-.69-.824-.9-1.38-.165-.42-.359-1.065-.42-2.235-.045-1.26-.061-1.649-.061-4.844 0-3.196.016-3.586.061-4.861.061-1.17.255-1.814.42-2.234.21-.57.479-.96.9-1.381.419-.419.81-.689 1.379-.898.42-.166 1.051-.361 2.221-.421 1.275-.045 1.65-.06 4.859-.06zm0 3.678c-3.405 0-6.162 2.76-6.162 6.162 0 3.405 2.757 6.162 6.162 6.162 3.405 0 6.162-2.757 6.162-6.162 0-3.402-2.757-6.162-6.162-6.162zM12 16c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zm7.846-10.405c0 .795-.646 1.44-1.44 1.44-.795 0-1.44-.645-1.44-1.44 0-.794.646-1.439 1.44-1.439.793 0 1.44.645 1.44 1.439z"/></svg>

@@ -283,6 +283,26 @@ export interface Post {
 // slug must match a PROJECTS slug to link project card -> post
 export const POSTS: Post[] = [
   {
+    slug: 'summer-spotlight-suchit-basineni',
+    kind: 'blog',
+    date: 'August 2026',
+    tag: 'Summer Spotlight',
+    tagColor: '#4fae7d',
+    title: 'Summer Spotlight: Suchit Basineni',
+    dek: 'Suchit Basineni spent the summer with NOAA\'s Hurricane Research Division at AOML, stress-testing HAFS rainfall forecasts against Hurricane Helene.',
+    photo: '/blog/suchit-nhc.jpg',
+    body: [
+      "Suchit Basineni is a Computer Science major on GeoData's Tech Team.",
+      'Through the **Lapenta Internship Program**, I worked at the **AOML (Atlantic Oceanographic and Meteorological Laboratory)** in Key Biscayne, FL. This summer I was working with the **Hurricane Research Division**, which works on improving hurricane models, data collection, and aircraft reconnaissance missions.',
+      { img: '/blog/suchit-presenting.jpg' },
+      'I worked on analyzing and comparing precipitation outputs from **HAFS (Hurricane Analysis and Forecasting System)** on hurricane Helene to observed data by using various statistical methods. Apart from the results, I created a framework that creates a suite of products (graphs) to be able to investigate other storms too. The goal of the project was to identify faults in the model rainfall forecasts and how to better forecast extreme rainfall events that are associated with landfalling hurricanes.',
+    ],
+    links: [
+      { label: 'NOAA AOML', href: 'https://www.aoml.noaa.gov/' },
+      { label: 'Suchit on LinkedIn', href: 'https://www.linkedin.com/in/suchit-basineni/' },
+    ],
+  },
+  {
     slug: 'summer-spotlight-orion-hoch',
     kind: 'blog',
     date: 'August 2026',

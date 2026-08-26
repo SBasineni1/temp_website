@@ -106,6 +106,18 @@ a:hover {
   color: #84d3ab;
 }
 
+/* member tile: lift + subteam-color outline on hover, previewing the
+   flipped card's border (--tile-color is set inline per member) */
+.member-tile {
+  transition: transform 0.2s ease;
+}
+
+.member-tile:hover,
+.member-tile:focus-visible {
+  transform: translateY(-2px);
+  outline: 2px solid var(--tile-color, #4fae7d);
+}
+
 summary {
   cursor: pointer;
   list-style: none;

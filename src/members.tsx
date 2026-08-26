@@ -81,19 +81,31 @@ export function MembersPage() {
                     ) : (
                       <button
                         type="button"
+                        className="member-tile"
                         onClick={() => setFlippedMember(tileKey)}
                         aria-label={`Contact info for ${m.name}`}
-                        style={{ position: 'relative', display: 'block', width: '100%', padding: 0, border: 'none', background: 'transparent', cursor: 'pointer', userSelect: 'none', WebkitUserSelect: 'none' }}
+                        style={{ position: 'relative', display: 'block', width: '100%', padding: 0, border: 'none', background: 'transparent', cursor: 'pointer', userSelect: 'none', WebkitUserSelect: 'none', '--tile-color': color } as React.CSSProperties}
                       >
                         {m.photo ? (
                           <img loading="lazy" decoding="async" src={m.photo} alt={m.name} draggable={false} style={{ display: 'block', width: '100%', aspectRatio: '1/1', objectFit: 'cover', userSelect: 'none', WebkitUserSelect: 'none' }} />
                         ) : (
                           <div style={{ aspectRatio: '1/1', background: '#1a2430' }} />
                         )}
+                        {/* curved flip arrow on a small scrim chip: hints the tile
+                            flips to contact info */}
+                        <div aria-hidden="true" style={{ position: 'absolute', top: 6, right: 6, width: 24, height: 24, borderRadius: 6, background: 'rgba(14,20,28,0.62)', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+                          {/* two-arrow cycle, like the 🔄 emoji */}
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                            <path d="M21 3v5h-5" />
+                            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                            <path d="M8 16H3v5" />
+                          </svg>
+                        </div>
                       </button>
                     )}
                     {SUBTEAM_BADGES[m.badge ?? subteam] && (
-                      <img className="member-badge" decoding="async" src={SUBTEAM_BADGES[m.badge ?? subteam]} alt={`${m.badge ?? subteam} team badge`} draggable={false} style={{ position: 'absolute', top: 8, right: 8, width: 36, height: 36, pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none' }} />
+                      <img className="member-badge" decoding="async" src={SUBTEAM_BADGES[m.badge ?? subteam]} alt={`${m.badge ?? subteam} team badge`} draggable={false} style={{ position: 'absolute', top: 8, left: 8, width: 36, height: 36, pointerEvents: 'none', userSelect: 'none', WebkitUserSelect: 'none' }} />
                     )}
                     <div style={{ fontFamily: RESIPLE, fontWeight: 700, fontSize: 16.5, marginTop: 12 }}>{m.name}</div>
                     {(m.role || m.lead) && (

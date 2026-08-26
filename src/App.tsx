@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Globe from './Globe';
 import { RESIPLE, MANTI, H2, BODY, PILL, PILL_PRIMARY } from './theme';
@@ -21,6 +21,115 @@ const emphasize = (text: string) =>
 //   pdftoppm -jpeg -jpegopt quality=78 -scale-to-x 1400 -scale-to-y -1 public/sponsorship-packet.pdf public/sponsorship/page
 const PACKET_PAGE_COUNT = 12;
 const packetPageSrc = (n: number) => `/sponsorship/page-${String(n + 1).padStart(2, '0')}.jpg`;
+
+// Cornell project-team recruiting dates, fall 2026, from the Engineering
+// project teams recruiting calendar. `end` (Ithaca local time) is when the
+// event stops being "upcoming" - past events grey out, the next one is green.
+// rows: each inner array renders as one line of the path; a continuation
+// arrow leads into every row after the first
+const RECRUITING_TRACKS = [
+  {
+    track: 'Upperclassmen',
+    rows: [[
+      { name: 'Project Teams Fest', when: 'Sept 1, 4-6 p.m.\nDuffield Atrium', end: '2026-09-01T18:00:00-04:00', icon: 'fest' },
+      { name: 'Coffee Chats', when: 'Aug 27 -- Sept 4', end: '2026-09-04T23:59:59-04:00', icon: 'coffee' },
+      { name: 'Applications Due', when: 'Sept 3, 11:59 p.m.', end: '2026-09-03T23:59:00-04:00', icon: 'apps' },
+      { name: 'Interviews', when: 'Sept 4 -- 15', end: '2026-09-15T23:59:59-04:00', icon: 'interview' },
+      { name: 'First Offer Date', when: 'Sept 16', end: '2026-09-16T23:59:59-04:00', icon: 'offer' },
+      { name: 'Add Deadline', when: 'Sept 25, 5 p.m.', end: '2026-09-25T17:00:00-04:00', icon: 'deadline' },
+    ]],
+  },
+  {
+    track: 'First-Year + Transfer',
+    rows: [[
+      { name: 'Project Teams Fest', when: 'Sept 1, 4-6 p.m.\nDuffield Atrium', end: '2026-09-01T18:00:00-04:00', icon: 'fest' },
+      { name: 'Coffee Chats', when: 'Aug 27 -- Oct 14', end: '2026-10-14T23:59:59-04:00', icon: 'coffee' },
+      { name: 'Applications Due', when: 'Oct 15, 11:59 p.m.', end: '2026-10-15T23:59:00-04:00', icon: 'apps' },
+      { name: 'Interviews', when: 'Oct 16 -- Nov 1', end: '2026-11-01T23:59:59-05:00', icon: 'interview' },
+      { name: 'First Offer Date', when: 'Nov 2', end: '2026-11-02T23:59:59-05:00', icon: 'offer' },
+      { name: 'Onboarding Begins', when: 'Nov 4', end: '2026-11-04T23:59:59-05:00', icon: 'onboard' },
+    ]],
+  },
+];
+
+// hand-drawn-style line icons for the timeline stops, same stroke language as
+// the tethersonde balloon in the join heading
+function EventIcon({ kind, color, bob }: { kind: string; color: string; bob: boolean }) {
+  const s = { fill: 'none', stroke: color, strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+  return (
+    <svg className={bob ? 'balloon-bob' : undefined} width="26" height="26" viewBox="0 0 24 24" style={{ display: 'block', margin: '0 auto' }} aria-hidden="true">
+      {kind === 'fest' && <g {...s}><path d="M6 21V3" /><path d="M6 4h12l-3.5 3.5L18 11H6" /></g>}
+      {kind === 'coffee' && <g {...s}><path d="M5 10h11v7a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3v-7Z" /><path d="M16 11h1.5a2.5 2.5 0 0 1 0 5H16" /><path d="M8.5 7c0-1.4 1-1.6 1-3" /><path d="M12.5 7c0-1.4 1-1.6 1-3" /></g>}
+      {kind === 'apps' && <g {...s}><path d="M7 3h7l4 4v14H7V3Z" /><path d="M14 3v4h4" /><path d="M10 12h5M10 16h5" /></g>}
+      {kind === 'interview' && <g {...s}><path d="M4 5h16v11h-9l-4 4v-4H4V5Z" /><path d="M8 9.5h8M8 12.5h5" /></g>}
+      {kind === 'offer' && <g {...s}><path d="M4 6h16v12H4V6Z" /><path d="m4 7 8 6 8-6" /></g>}
+      {kind === 'deadline' && <g {...s}><circle cx="12" cy="13" r="8" /><path d="M12 9v4l3 2" /><path d="M9 2.5h6" /></g>}
+      {kind === 'onboard' && <g {...s}><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" /><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" /><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" /><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" /></g>}
+    </svg>
+  );
+}
+
+function RecruitingTimeline() {
+  const now = Date.now();
+  return (
+    <section style={{ position: 'relative', zIndex: 2, background: '#0e141c', padding: '0 clamp(24px,5vw,72px) 130px' }}>
+      <h2 style={{ fontFamily: MANTI, fontWeight: 700, fontSize: 'clamp(42px,6.2vw,80px)', letterSpacing: '-0.03em', lineHeight: 1, margin: 0 }}>Recruiting <span style={{ color: '#4fae7d' }}>Timeline</span></h2>
+      <div style={{ marginTop: 44, border: '2px solid #4fae7d', borderRadius: 16, padding: '0 34px 42px', overflowX: 'auto' }}>
+      {RECRUITING_TRACKS.map(({ track, rows }) => {
+        const next = rows.flat().find((e) => now <= new Date(e.end).getTime());
+        return (
+          <div key={track} style={{ marginTop: 40 }}>
+            <div style={{ fontFamily: RESIPLE, fontSize: 14, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#4fae7d' }}>{track}</div>
+            {/* ox path: even rows run left-to-right, odd rows run right-to-left,
+                joined by a curve down the right edge */}
+            {rows.map((events, r) => {
+              const reversed = r % 2 === 1;
+              const first = events[0];
+              const curveColor = now > new Date(first.end).getTime() || first === next ? '#086727' : '#243140';
+              return (
+              <Fragment key={r}>
+                {r > 0 && (
+                  // the ox-turn: continues right off the row above, arcs down,
+                  // and points left into the first stop of the row below
+                  <svg width="150" height="60" viewBox="0 0 150 60" style={{ display: 'block', margin: '6px 0 0 auto' }} aria-hidden="true">
+                    <path d="M85 8h25a22 22 0 0 1 0 44H95" fill="none" stroke={curveColor} strokeWidth="2" />
+                    <path d="m103 47-8 5 8 5" fill="none" stroke={curveColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              <div style={{ display: 'flex', flexDirection: reversed ? 'row-reverse' : 'row', alignItems: 'flex-start', marginTop: r === 0 ? 24 : 4 }}>
+                {events.map((e, i) => {
+                  const past = now > new Date(e.end).getTime();
+                  const active = e === next;
+                  const arrowColor = past || active ? '#086727' : '#243140';
+                  return (
+                    <Fragment key={e.name}>
+                      {i > 0 && (
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', margin: '7px 14px 0', minWidth: 24, height: 14 }}>
+                          {reversed && <svg width="11" height="14" viewBox="0 0 11 14" style={{ flexShrink: 0 }} aria-hidden="true"><path d="M9 2 3 7l6 5" fill="none" stroke={arrowColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                          <div style={{ flex: 1, height: 2, borderRadius: 2, background: arrowColor }} />
+                          {!reversed && <svg width="11" height="14" viewBox="0 0 11 14" style={{ flexShrink: 0 }} aria-hidden="true"><path d="m2 2 6 5-6 5" fill="none" stroke={arrowColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                        </div>
+                      )}
+                      {/* fixed width so the two tracks' stops line up in columns */}
+                      <div style={{ textAlign: 'center', width: 140, flexShrink: 0 }}>
+                        <EventIcon kind={e.icon} color={past ? '#4d5b63' : active ? '#4fae7d' : '#a9bcc6'} bob={active} />
+                        <div style={{ fontFamily: RESIPLE, fontWeight: 700, fontSize: 13.5, marginTop: 10, color: past ? '#4d5b63' : active ? '#4fae7d' : '#e6ecf0' }}>{e.name}</div>
+                        <div style={{ fontFamily: RESIPLE, fontSize: 12, color: past ? '#4d5b63' : '#a9bcc6', marginTop: 4, whiteSpace: 'pre-line' }}>{e.when}</div>
+                      </div>
+                    </Fragment>
+                  );
+                })}
+              </div>
+              </Fragment>
+              );
+            })}
+          </div>
+        );
+      })}
+      </div>
+    </section>
+  );
+}
 
 function PacketViewer() {
   const [page, setPage] = useState(0);
@@ -46,17 +155,17 @@ function PacketViewer() {
     return () => { document.body.style.overflow = ''; };
   }, [full]);
   const arrowStyle = (enabled: boolean): React.CSSProperties => ({ padding: '7px 22px', border: '1px solid rgba(255,255,255,0.18)', background: 'transparent', color: enabled ? '#e6ecf0' : '#4d5b63', fontFamily: RESIPLE, fontWeight: 700, fontSize: 17, cursor: enabled ? 'pointer' : 'default', lineHeight: 1.2 });
-  const cornerBtn: React.CSSProperties = { padding: '7px 16px', fontFamily: RESIPLE, fontWeight: 700, fontSize: 12.5, boxShadow: '0 2px 10px rgba(0,0,0,0.45)', lineHeight: 1.4 };
+  const cornerBtn: React.CSSProperties = { padding: '5px 12px', fontFamily: RESIPLE, fontWeight: 700, fontSize: 11, boxShadow: '0 2px 10px rgba(0,0,0,0.45)', lineHeight: 1.4 };
   const viewer = (
     <div
       className="team-photo-frame"
       style={full
         ? { position: 'fixed', inset: 0, zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(14,20,28,0.98)', padding: 14 }
-        : { width: 'fit-content', maxWidth: '100%', margin: '64px auto 0', padding: 14, border: '2px solid #086727', boxShadow: '10px 10px 0 rgba(8,103,39,0.35)' }}
+        : { width: 'fit-content', maxWidth: '100%', margin: '0 auto', padding: 14, border: '2px solid #086727', boxShadow: '10px 10px 0 rgba(8,103,39,0.35)' }}
     >
       <div style={{ position: 'relative' }}>
         {/* sized by height so the whole page fits on screen without scrolling */}
-        <img key={page} src={packetPageSrc(page)} alt={`Sponsorship packet, page ${page + 1} of ${PACKET_PAGE_COUNT}`} style={{ display: 'block', height: full ? 'calc(100vh - 110px)' : 'min(74vh, 760px)', maxWidth: '100%', aspectRatio: '1400/1812', objectFit: 'contain', background: '#1a2430' }} />
+        <img key={page} src={packetPageSrc(page)} alt={`Sponsorship packet, page ${page + 1} of ${PACKET_PAGE_COUNT}`} style={{ display: 'block', height: full ? 'calc(100vh - 110px)' : 'min(56vh, 520px)', maxWidth: '100%', aspectRatio: '1400/1812', objectFit: 'contain', background: '#1a2430' }} />
         <div style={{ position: 'absolute', right: 10, bottom: 10, display: 'flex', gap: 8 }}>
           <button
             type="button"
@@ -90,7 +199,7 @@ function CopyEmailButton({ label }: { label: string }) {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       }}
-      style={{ display: 'inline-block', padding: '13px 28px', border: 0, cursor: 'pointer', background: '#086727', color: '#eaf2ee', fontWeight: 700, fontSize: 17, fontFamily: RESIPLE }}
+      style={{ display: 'inline-block', padding: '13px 28px', borderRadius: 999, border: 0, cursor: 'pointer', background: '#086727', color: '#eaf2ee', fontWeight: 700, fontSize: 17, fontFamily: RESIPLE }}
     >
       {copied ? 'Copied cugeodata@cornell.edu' : label}
     </button>
@@ -271,6 +380,14 @@ function AlumniPit({ alumni }: { alumni: typeof ALUMNI }) {
 export default function App() {
   const [route, setRoute] = useState(window.location.hash);
   const [menuOpen, setMenuOpen] = useState(false);
+  // recruiting banner shows only while the hero/globe is in view
+  const [pastHero, setPastHero] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setPastHero(window.scrollY > window.innerHeight * 0.7);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
   const [postFilter, setPostFilter] = useState<'all' | 'project' | 'blog'>('all');
 
   const onPostsPage = route === '#/posts';
@@ -310,7 +427,9 @@ export default function App() {
 
   return (
     <div style={{ position: 'relative', width: '100%', overflowX: 'clip', background: '#0e141c' }}>
-      <header className="site-header" style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 42px', background: 'rgba(14,20,28,0.85)', fontFamily: RESIPLE }}>
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50 }}>
+      <a href="https://docs.google.com/forms/d/e/1FAIpQLSfI87dxinWPeDd9aevwKjwfP0NtWR8uJDhHeD9qjdQPXV9oiA/viewform?usp=dialog" target="_blank" rel="noopener noreferrer" style={{ display: 'block', overflow: 'hidden', textAlign: 'center', maxHeight: pastHero ? 0 : 44, padding: pastHero ? '0 16px' : '8px 16px', transition: 'max-height 0.3s, padding 0.3s', background: '#086727', color: '#eaf2ee', fontWeight: 700, fontSize: 14, fontFamily: RESIPLE }}>Upperclassmen Recruiting is Open until 9/3! →</a>
+      <header className="site-header" style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 42px', background: 'rgba(14,20,28,0.85)', fontFamily: RESIPLE }}>
         <a href="#top" className="logo-link" style={{ display: 'flex', alignItems: 'center', gap: 12, color: '#e6ecf0', flexShrink: 0 }}>
           <img src="/logo.png" alt="" style={{ width: 78, height: 78, flexShrink: 0 }} />
           <span className="logo-text" style={{ fontFamily: "'Intan',sans-serif", fontWeight: 700, fontSize: 33, letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>GeoData</span>
@@ -347,6 +466,7 @@ export default function App() {
           </nav>
         )}
       </header>
+      </div>
 
       <span id="top" />
 
@@ -447,15 +567,18 @@ export default function App() {
       ) : onSponsorsPage ? (
       <section style={{ position: 'relative', zIndex: 2, background: '#0e141c', padding: '150px clamp(24px,5vw,72px) 110px', minHeight: '100vh' }}>
         <div style={{ maxWidth: 1180, margin: '0 auto' }}>
-          <h2 style={H2}>Sponsorship</h2>
-          <p style={{ ...BODY, maxWidth: 620, margin: '26px 0 0' }}>Every instrument we deploy is designed, built, and tested by students. Sponsor support directly funds the hardware, fieldwork, and research that make our projects possible.</p>
-          <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 34 }}>
-            <CopyEmailButton label="Become a sponsor" />
-            <a href={SPONSOR_PACKET_PDF} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', padding: '13px 28px', border: '1px solid rgba(255,255,255,0.18)', color: '#e6ecf0', fontWeight: 700, fontSize: 17, fontFamily: RESIPLE }}>Download the packet (PDF)</a>
+          <div style={{ display: 'flex', gap: 'clamp(32px,4vw,64px)', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ flex: '0 1 560px', minWidth: 300 }}>
+              <h2 style={H2}>Sponsorships &amp; Donations</h2>
+              <p style={{ ...BODY, maxWidth: 620, margin: '26px 0 0' }}>Every instrument we deploy is designed, built, and tested by students. Sponsor support directly funds the hardware, fieldwork, and research that make our projects possible.</p>
+              <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 34 }}>
+                <CopyEmailButton label="Become a sponsor" />
+                <a href={SPONSOR_PACKET_PDF} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', padding: '13px 28px', borderRadius: 999, border: '1px solid rgba(255,255,255,0.18)', color: '#e6ecf0', fontWeight: 700, fontSize: 17, fontFamily: RESIPLE }}>Download the packet (PDF)</a>
+              </div>
+            </div>
+            {/* PACKET BOARD */}
+            <PacketViewer />
           </div>
-
-          {/* PACKET BOARD */}
-          <PacketViewer />
 
           {/* TIERS */}
           <div style={{ marginTop: 110 }}>
@@ -581,12 +704,15 @@ export default function App() {
           <h2 style={{ fontFamily: MANTI, fontWeight: 700, fontSize: 'clamp(42px,6.2vw,80px)', letterSpacing: '-0.03em', lineHeight: 1, margin: '20px 0 0' }}>Design, Deploy,<br /><span style={{ color: '#4fae7d' }}>Discover</span></h2>
           <p style={{ ...BODY, maxWidth: 560, margin: '26px 0 0' }}>Build the instruments a changing planet needs. GeoData welcomes students of every major, from CS and MechE to earth science and design. If you want to build hardware that ends up outdoors collecting real data, there's a subteam for you.</p>
           <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 38 }}>
-            <a href="https://docs.google.com/forms/d/e/1FAIpQLSfI87dxinWPeDd9aevwKjwfP0NtWR8uJDhHeD9qjdQPXV9oiA/viewform?usp=dialog" target="_blank" rel="noopener noreferrer" style={PILL_PRIMARY}>Upperclassmen Recruiting</a>
+            <a href="https://docs.google.com/forms/d/e/1FAIpQLSfI87dxinWPeDd9aevwKjwfP0NtWR8uJDhHeD9qjdQPXV9oiA/viewform?usp=dialog" target="_blank" rel="noopener noreferrer" style={PILL_PRIMARY}>Upperclassmen Recruiting: DUE 9/3</a>
             <a href="https://docs.google.com/forms/d/1u6mjjlEL9Y4fdN8RFB1K6jTpS7aYig-wt54i3YyhtS8/viewform" target="_blank" rel="noopener noreferrer" style={PILL}>Underclassmen Interest Form</a>
             <a href="https://docs.google.com/spreadsheets/d/1ZYLfV6FjYPi1sL58lr9eAjuKM37q2tXTtEAOSyoPfpU/edit?usp=sharing" target="_blank" rel="noopener noreferrer" style={PILL}>Coffee Chat Contacts</a>
           </div>
         </div>
       </section>
+
+      {/* RECRUITING TIMELINE */}
+      <RecruitingTimeline />
 
       </>
       )}

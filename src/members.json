@@ -113,7 +113,7 @@
     "subteam": "Water",
     "photo": "/members/henry.jpeg",
     "email": "xm245@cornell.edu",
-    "major": "Pre-Med",
+    "major": "Biology and Society",
     "linkedin": "https://www.linkedin.com/in/henry-mu-4a79b8349/"
   },
   {
@@ -127,9 +127,10 @@
   {
     "name": "Lauren Rakov",
     "subteam": "Water",
-    "photo": "",
+    "photo": "/members/lauren.jpg",
     "email": "lmr285@cornell.edu",
-    "major": "Environmental Engineering"
+    "major": "Earth and Climate Sciences",
+    "linkedin": "https://www.linkedin.com/in/lauren-rakov/"
   },
   {
     "name": "Aya Saute",
@@ -162,7 +163,7 @@
     "subteam": "Rock",
     "photo": "/members/janice.jpg",
     "email": "jy975@cornell.edu",
-    "major": "Earth and Atmospheric Sciences",
+    "major": "Earth and Climate Sciences",
     "linkedin": "https://www.linkedin.com/in/janiceyohannan/"
   },
   {
@@ -252,7 +253,7 @@
     "subteam": "Tech",
     "photo": "/members/lindsey.jpg",
     "email": "lmp276@cornell.edu",
-    "major": "Earth and Atmospheric Science",
+    "major": "Earth and Climate Sciences",
     "linkedin": "https://www.linkedin.com/in/lindsey-paradise-594148246/"
   },
   {

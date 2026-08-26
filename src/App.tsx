@@ -71,6 +71,13 @@ function EventIcon({ kind, color, bob }: { kind: string; color: string; bob: boo
 
 function RecruitingTimeline() {
   const now = Date.now();
+  const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 720px)').matches);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 720px)');
+    const onChange = (e: MediaQueryListEvent) => setMobile(e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
   return (
     <section style={{ position: 'relative', zIndex: 2, background: '#0e141c', padding: '0 clamp(24px,5vw,72px) 130px' }}>
       <h2 style={{ fontFamily: MANTI, fontWeight: 700, fontSize: 'clamp(42px,6.2vw,80px)', letterSpacing: '-0.03em', lineHeight: 1, margin: 0 }}>Recruiting <span style={{ color: '#4fae7d' }}>Timeline</span></h2>
@@ -80,6 +87,32 @@ function RecruitingTimeline() {
         return (
           <div key={track} style={{ marginTop: 40 }}>
             <div style={{ fontFamily: RESIPLE, fontSize: 14, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#4fae7d' }}>{track}</div>
+            {mobile ? (
+              // single vertical column on phones instead of the snaking rows
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: 24 }}>
+                {rows.flat().map((e, i) => {
+                  const past = now > new Date(e.end).getTime();
+                  const active = e === next;
+                  const arrowColor = past || active ? '#086727' : '#243140';
+                  return (
+                    <Fragment key={e.name}>
+                      {i > 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '10px 0' }}>
+                          <div style={{ width: 2, height: 20, borderRadius: 2, background: arrowColor }} />
+                          <svg width="14" height="11" viewBox="0 0 14 11" aria-hidden="true"><path d="m2 2 5 6 5-6" fill="none" stroke={arrowColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                        </div>
+                      )}
+                      <div style={{ textAlign: 'center', width: 200 }}>
+                        <EventIcon kind={e.icon} color={past ? '#4d5b63' : active ? '#4fae7d' : '#a9bcc6'} bob={active} />
+                        <div style={{ fontFamily: RESIPLE, fontWeight: 700, fontSize: 13.5, marginTop: 10, color: past ? '#4d5b63' : active ? '#4fae7d' : '#e6ecf0' }}>{e.name}</div>
+                        <div style={{ fontFamily: RESIPLE, fontSize: 12, color: past ? '#4d5b63' : '#a9bcc6', marginTop: 4, whiteSpace: 'pre-line' }}>{e.when}</div>
+                      </div>
+                    </Fragment>
+                  );
+                })}
+              </div>
+            ) : (
+            <>
             {/* ox path: even rows run left-to-right, odd rows run right-to-left,
                 joined by a curve down the right edge */}
             {rows.map((events, r) => {
@@ -123,6 +156,8 @@ function RecruitingTimeline() {
               </Fragment>
               );
             })}
+            </>
+            )}
           </div>
         );
       })}

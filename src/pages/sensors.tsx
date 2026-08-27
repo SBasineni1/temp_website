@@ -19,12 +19,13 @@ function eggSeries(raw: unknown): { key: string; points: EggPoint[] }[] {
   const out: { key: string; points: EggPoint[] }[] = [];
   for (const [key, val] of Object.entries(obj)) {
     if (!Array.isArray(val)) continue;
-    // raw ~1-minute samples, unaveraged: the noise is the instrument's real
-    // behaviour, and smoothing it away made the traces look synthetic
+    // the Egg reports ~every minute; charts show one sample per 5-minute bucket.
+    // no averaging - the kept sample's noise is the instrument's real behaviour
     const points = (val as { t?: string; time?: string; date?: string; v?: unknown; value?: unknown }[])
       .map((p) => ({ t: Date.parse(p?.t ?? p?.time ?? p?.date ?? ''), v: Number(p?.v ?? p?.value) }))
       .filter((p) => Number.isFinite(p.t) && Number.isFinite(p.v))
-      .sort((a, b) => a.t - b.t);
+      .sort((a, b) => a.t - b.t)
+      .filter((p, i, a) => i === 0 || Math.floor(p.t / 300_000) !== Math.floor(a[i - 1].t / 300_000));
     if (points.length > 1) out.push({ key: key.toLowerCase(), points });
   }
   return out;
@@ -175,7 +176,7 @@ function SensorChart({ label, unit, points, y0, minSpan, epaBands, rating }: { l
     <div style={{ background: PLATE.paper, border: '3px solid #086727', padding: '16px 18px 12px' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, minWidth: 0 }}>
-          <div style={{ fontFamily: RESIPLE, fontSize: 12, letterSpacing: '0.1em', textTransform: 'uppercase', color: PLATE.ink }}>
+          <div style={{ fontFamily: RESIPLE, fontSize: 12, letterSpacing: '0.1em', textTransform: 'uppercase', color: PLATE.ink, whiteSpace: 'nowrap' }}>
             {subPM(label)} <span style={{ textTransform: 'none', letterSpacing: 0, color: PLATE.muted }}>({unit})</span>
           </div>
           {rating && (
@@ -187,7 +188,7 @@ function SensorChart({ label, unit, points, y0, minSpan, epaBands, rating }: { l
         </div>
         {hp && (
           <div style={{ fontFamily: RESIPLE, fontSize: 12, color: PLATE.muted, whiteSpace: 'nowrap' }}>
-            {fmtVal(hp.v)} {unit} at {fmtTime(hp.t)}
+            {fmtVal(hp.v)} at {fmtTime(hp.t)}
           </div>
         )}
       </div>

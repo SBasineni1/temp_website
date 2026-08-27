@@ -20,7 +20,6 @@ export class GlobeEngine {
   _raf?: number;
   _dragCleanup?: () => void;
 
-  time = 0;
   halfWidth = 2.4;
   userYaw = 0;
   userPitch = 0;
@@ -47,7 +46,6 @@ export class GlobeEngine {
     this.onNoWebGL = onNoWebGL;
 
     this._destroyed = false;
-    this.time = 0;
     this.userYaw = 0;
     this.userPitch = 0;
     this.zoom = 1;
@@ -181,6 +179,8 @@ export class GlobeEngine {
       return;
     }
     renderer.setClearColor(0x000000, 0);
+    // three is pinned to exactly 0.150.1 in package.json - outputEncoding and
+    // sRGBEncoding were removed in r152+ (use outputColorSpace/SRGBColorSpace if you ever bump).
     renderer.outputEncoding = THREE.sRGBEncoding;
     this.renderer = renderer;
 
@@ -267,7 +267,6 @@ export class GlobeEngine {
     if (this._destroyed || this._noWebGL || !this.renderer) return;
     const renderer = this.renderer;
     this._raf = requestAnimationFrame(this.animate);
-    this.time += 0.016;
 
     this.group.rotation.y = this.baseRotY + this.userYaw;
     this.group.rotation.x = Math.max(-1.25, Math.min(1.25, this.baseRotX + this.userPitch));

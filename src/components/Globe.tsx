@@ -16,7 +16,7 @@ export default function Globe() {
     let engine: { unmount(): void } | undefined;
     let cancelled = false;
     const canvasEl = canvasRef.current!;
-    import('./globeEngine').then((mod) => {
+    import('../lib/globeEngine').then((mod) => {
       if (cancelled) return;
       const e = new mod.GlobeEngine();
       e.mount({ canvasEl, onNoWebGL: () => setNoWebGL(true) });

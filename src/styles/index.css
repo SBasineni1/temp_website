@@ -115,7 +115,7 @@ a:hover {
 .member-tile:hover,
 .member-tile:focus-visible {
   transform: translateY(-2px);
-  outline: 2px solid var(--tile-color, #4fae7d);
+  outline: 3px solid var(--tile-color, #4fae7d);
 }
 
 summary {
@@ -143,17 +143,6 @@ details[open] > summary .chev::before {
 ::selection {
   background: #4fae7d;
   color: #0e141c;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .balloon-bob {
-    animation: balloon-bob 3.6s ease-in-out infinite;
-  }
-
-  @keyframes balloon-bob {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-3px); }
-  }
 }
 
 .globe-sticky {

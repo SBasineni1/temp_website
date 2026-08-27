@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { RESIPLE, MANTI, H2 } from './theme';
-import { MEMBERS, SUBTEAM_COLORS, SUBTEAM_BADGES, SUBTEAM_COUNT, MEMBER_COUNT } from './content';
+import { RESIPLE, MANTI, H2, SUBPAGE } from '../styles/theme';
+import { MEMBERS, SUBTEAM_COLORS, SUBTEAM_BADGES, SUBTEAM_COUNT, MEMBER_COUNT } from '../data/content';
 
 const teamLabel = (s: string): string => (s === 'Leadership' ? s : `${s} Team`);
 
@@ -16,7 +16,7 @@ export function MembersPage() {
   };
 
   return (
-    <section style={{ position: 'relative', zIndex: 2, background: '#0e141c', padding: '150px clamp(24px,5vw,72px) 110px', minHeight: '100vh' }}>
+    <section style={SUBPAGE}>
       <div style={{ maxWidth: 1180, margin: '0 auto' }}>
         <div className="members-head" style={{ display: 'flex', flexWrap: 'wrap', gap: '28px 48px', alignItems: 'flex-end', justifyContent: 'space-between' }}>
           <div>
@@ -55,7 +55,7 @@ export function MembersPage() {
                         ) : (
                           <div style={{ aspectRatio: '1/1', background: '#1a2430' }} />
                         )}
-                        <div className="member-flip" style={{ position: 'absolute', inset: 0, background: 'rgba(12,18,24,0.82)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', border: `2px solid ${color}`, padding: 16, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 10 }}>
+                        <div className="member-flip" style={{ position: 'absolute', inset: 0, background: 'rgba(12,18,24,0.82)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', border: `3px solid ${color}`, padding: 16, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 10 }}>
                         <div style={{ fontFamily: RESIPLE, fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color }}>{m.role ?? (m.lead ? 'Subteam Lead' : 'Contact')}</div>
                         <div style={{ fontSize: 14.5, color: '#b6c6ce' }}>{m.major || 'Major TBD'}</div>
                         {m.email ? (
@@ -91,17 +91,6 @@ export function MembersPage() {
                         ) : (
                           <div style={{ aspectRatio: '1/1', background: '#1a2430' }} />
                         )}
-                        {/* curved flip arrow on a small scrim chip: hints the tile
-                            flips to contact info */}
-                        <div aria-hidden="true" style={{ position: 'absolute', top: 6, right: 6, width: 24, height: 24, borderRadius: 6, background: 'rgba(14,20,28,0.62)', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-                          {/* two-arrow cycle, like the 🔄 emoji */}
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-                            <path d="M21 3v5h-5" />
-                            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-                            <path d="M8 16H3v5" />
-                          </svg>
-                        </div>
                       </button>
                     )}
                     {SUBTEAM_BADGES[m.badge ?? subteam] && (

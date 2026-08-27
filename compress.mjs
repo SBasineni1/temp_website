@@ -14,6 +14,9 @@ async function walk(dir) {
     const p = path.join(dir, entry.name);
     if (entry.isDirectory()) {
       await walk(p);
+    } else if (entry.name === '.DS_Store') {
+      // vite copies public/ verbatim, so a Finder-created .DS_Store ships to prod
+      await fs.unlink(p);
     } else if (EXTS.has(path.extname(entry.name))) {
       const buf = await fs.readFile(p);
       await fs.writeFile(p + '.br', await brotli(buf, {

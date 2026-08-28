@@ -451,7 +451,7 @@ export function SensorsPage() {
       {/* the °C/°F toggle overlays the tab row; it only applies to the egg
           temperature panels, so it rides the air tab */}
       <div style={{ position: 'relative', marginTop: 32 }}>
-      <div style={{ display: 'inline-flex', border: '2px solid rgba(255,255,255,0.3)', overflow: 'hidden' }}>
+      <div style={{ display: 'inline-flex', border: `2px solid ${tab === 'soil' ? '#c1703f' : '#6d9dcd'}`, overflow: 'hidden' }}>
         {([['air', 'Air Quality'], ['soil', 'Soil Moisture']] as const).map(([id, label]) => (
           <button key={id} onClick={() => pickTab(id)} style={{ appearance: 'none', border: 'none', cursor: 'pointer', padding: '10px 22px', fontFamily: RESIPLE, fontSize: 13, letterSpacing: '0.12em', textTransform: 'uppercase', background: tab === id ? (id === 'soil' ? '#c1703f' : '#6d9dcd') : 'transparent', color: tab === id ? '#0e141c' : '#7c909b' }}>
             {label}
@@ -519,7 +519,7 @@ export function SensorsPage() {
         </div>
       )}
       {tab === 'air' && (
-        <div style={{ position: 'absolute', top: 0, right: 0, display: 'inline-flex', border: '2px solid rgba(255,255,255,0.3)', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: 0, right: 0, display: 'inline-flex', border: '2px solid #6d9dcd', overflow: 'hidden' }}>
           {(['F', 'C'] as const).map((u) => (
             <button key={u} onClick={() => setUnit(u)} style={{ appearance: 'none', border: 'none', cursor: 'pointer', padding: '8px 18px', fontFamily: RESIPLE, fontSize: 14, letterSpacing: '0.1em', background: unit === u ? '#6d9dcd' : 'transparent', color: unit === u ? '#0e141c' : '#7c909b' }}>
               °{u}

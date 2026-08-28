@@ -43,7 +43,7 @@ function PacketViewer() {
       className="team-photo-frame"
       style={full
         ? { position: 'fixed', inset: 0, zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(14,20,28,0.98)', padding: 14 }
-        : { width: 'fit-content', maxWidth: '100%', margin: '0 auto', padding: 14, border: '2px solid #086727', boxShadow: '10px 10px 0 rgba(8,103,39,0.35)' }}
+        : { width: 'fit-content', maxWidth: '100%', margin: '0 auto', padding: 14, border: '2px solid #086727' }}
     >
       <div style={{ position: 'relative' }}>
         {/* sized by height so the whole page fits on screen without scrolling */}

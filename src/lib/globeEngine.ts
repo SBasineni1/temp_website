@@ -46,8 +46,9 @@ export class GlobeEngine {
     this.onNoWebGL = onNoWebGL;
 
     this._destroyed = false;
-    this.userYaw = 0;
-    this.userPitch = 0;
+    // start at the hand-tuned framing (North America centered), drag adjusts from there
+    this.userYaw = 0.35;
+    this.userPitch = 0.06;
     this.zoom = 1;
 
     this.onResize = () => {
@@ -66,7 +67,7 @@ export class GlobeEngine {
       // desktop: earth sits right of center so the hero copy on the left stays
       // clear; mobile: centered in the lower half, below the stacked hero copy
       if (this.isMobile) this.group.position.set(0, -0.85, 0);
-      else this.group.position.set(this.halfWidth * 0.44, 0.04, 0);
+      else this.group.position.set(this.halfWidth * 0.44, -0.04, 0);
     };
     window.addEventListener('resize', this.onResize);
 
@@ -213,7 +214,7 @@ export class GlobeEngine {
     scene.add(stars);
     this.stars = stars;
 
-    this.loadModels(group, 1);
+    this.loadModels(group);
 
     // aim ~8° south of Ithaca so it's framed above center at a
     // 3/4 angle rather than seen top-down
@@ -224,41 +225,41 @@ export class GlobeEngine {
     group.rotation.x = this.baseRotX;
   }
 
-  loadModels(group: THREE.Group, R: number): void {
-    const loader = new GLTFLoader();
-    // some exported models carry non-finite node transforms, which poison both
-    // bounds measurement and rendering - repair them, then fit normally
+  // some exported models carry non-finite node transforms, which poison both
+  // bounds measurement and rendering - repair them, then fit normally
+  fitModel(obj: THREE.Object3D, targetR: number): THREE.Group {
     const finite3 = (p: { x: number; y: number; z: number }): boolean =>
       isFinite(p.x) && isFinite(p.y) && isFinite(p.z);
-    const fit = (obj: THREE.Object3D, targetR: number): THREE.Group => {
-      obj.traverse((o) => {
-        if (!finite3(o.position)) o.position.set(0, 0, 0);
-        if (!isFinite(o.quaternion.x) || !isFinite(o.quaternion.w)) o.quaternion.identity();
-        if (!finite3(o.scale) || o.scale.x === 0 || o.scale.y === 0 || o.scale.z === 0) o.scale.set(1, 1, 1);
-      });
-      const sphere = new THREE.Box3().setFromObject(obj).getBoundingSphere(new THREE.Sphere());
-      const wrap = new THREE.Group();
-      if (isFinite(sphere.radius) && sphere.radius > 0) {
-        obj.position.sub(sphere.center);
-        wrap.scale.setScalar(targetR / sphere.radius);
-      }
-      wrap.add(obj);
-      return wrap;
-    };
-    // skeleton placeholder so the hero never shows empty space while the GLB
-    // downloads - a dim shaded sphere at the earth's final 0.571 surface radius
+    obj.traverse((o) => {
+      if (!finite3(o.position)) o.position.set(0, 0, 0);
+      if (!isFinite(o.quaternion.x) || !isFinite(o.quaternion.w)) o.quaternion.identity();
+      if (!finite3(o.scale) || o.scale.x === 0 || o.scale.y === 0 || o.scale.z === 0) o.scale.set(1, 1, 1);
+    });
+    const sphere = new THREE.Box3().setFromObject(obj).getBoundingSphere(new THREE.Sphere());
+    const wrap = new THREE.Group();
+    if (isFinite(sphere.radius) && sphere.radius > 0) {
+      obj.position.sub(sphere.center);
+      wrap.scale.setScalar(targetR / sphere.radius);
+    }
+    wrap.add(obj);
+    return wrap;
+  }
+
+  loadModels(group: THREE.Group): void {
+    // skeleton placeholder so the hero never shows empty space while the model
+    // downloads - a dim shaded sphere at the earth's final surface radius
     const placeholder = new THREE.Mesh(
       new THREE.SphereGeometry(0.571, 48, 32),
       new THREE.MeshStandardMaterial({ color: 0x16222e, roughness: 0.9 }),
     );
     group.add(placeholder);
-    loader.load('/models/earth.glb', (gltf) => {
+    new GLTFLoader().load('/models/earth_astroriah/scene.gltf', (gltf) => {
       group.remove(placeholder);
       placeholder.geometry.dispose();
       placeholder.material.dispose();
-      const earth = fit(gltf.scene, R);
-      // spin the model so its painted continents line up with the latLon math
-      earth.rotation.y = 0.7;
+      const earth = this.fitModel(gltf.scene, 1);
+      // spin so painted continents line up with the latLon math
+      earth.rotation.y = 4.3;
       group.add(earth);
     });
   }

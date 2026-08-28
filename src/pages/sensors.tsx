@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import { RESIPLE, MANTI, H2, SUBPAGE } from '../styles/theme';
+import SensorGlobe from '../components/SensorGlobe';
+import type { GlobeSite } from '../lib/sites';
 import soilArchive from '../data/soil-archive.json';
 
 // ACTIVE SENSORS - the /api/aqi proxy (server.mjs) passes through the Egg API's
@@ -97,6 +100,10 @@ const fmtTick = (v: number) => (Math.abs(v % 1) < 1e-9 ? Math.round(v).toLocaleS
 
 // plain white figure plate inset into the dark page: the chrome wears the brand,
 // the measurement is printed like a journal figure
+// the two families the network splits into; the pins wear these on the globe
+const AIR = '#6d9dcd';
+const SOIL = '#c1703f';
+
 const PLATE = { paper: '#ffffff', rule: '#333333', grid: '#e7e7e7', ink: '#111111', muted: '#555555' };
 // the PM2.5 y-axis is anchored to the EPA health scale (top of the Moderate band);
 // the 9 µg/m³ standard itself is explained in the plate's footnote
@@ -116,7 +123,7 @@ function niceTicks(lo: number, hi: number, n = 4): number[] {
 const CHART_H = 172;
 const M = { l: 46, r: 18, t: 10, b: 24 };
 
-function SensorChart({ label, unit, points, y0, minSpan, epaBands, rating, accent = '#6d9dcd' }: { label: string; unit: string; points: EggPoint[]; y0?: number; minSpan?: number; epaBands?: boolean; rating?: Rating; accent?: string }) {
+function SensorChart({ label, unit, points, y0, minSpan, epaBands, rating, accent = AIR }: { label: string; unit: string; points: EggPoint[]; y0?: number; minSpan?: number; epaBands?: boolean; rating?: Rating; accent?: string }) {
   const [hover, setHover] = useState<number | null>(null);
   // real pixel coordinates: the path is regenerated at the measured width, so the
   // geometry is never non-uniformly stretched and slope means rate of change
@@ -293,11 +300,20 @@ function SoilCharts({ points, lifetime }: { points: EggPoint[]; lifetime?: EggPo
   );
 }
 
+// "N 42\u00b0 27.060' W 76\u00b0 26.863'" -> decimal degrees. Degrees-and-decimal-
+// minutes is how the team records positions in the field, so it stays the stored
+// form and the globe derives its pins from it rather than keeping a second copy.
+function dm(coords: string): { lat: number; lon: number } {
+  const [lat, lon] = [...coords.matchAll(/([NSEW])\s*(\d+)\u00b0\s*([\d.]+)'/g)]
+    .map(([, hem, deg, min]) => (Number(deg) + Number(min) / 60) * (hem === 'S' || hem === 'W' ? -1 : 1));
+  return { lat, lon };
+}
+
 // one card per egg. Ids are the slot names /api/aqi assigns in EGG_SERIAL order,
 // so adding an egg = append its serial to EGG_SERIAL on the server + an entry here.
 const EGGS = [
-  { id: 'egg1', name: 'Snee Egg', location: 'Snee Hall roof' },
-  { id: 'egg2', name: 'ELL Egg', location: 'GeoData workbench' },
+  { id: 'egg1', name: 'Snee Egg', location: 'Snee Hall roof', coords: "N 42\u00b0 26.613' W 76\u00b0 29.105'" },
+  { id: 'egg2', name: 'ELL Egg', location: 'GeoData workbench', coords: "N 42\u00b0 26.636' W 76\u00b0 28.971'" },
 ];
 
 // Zynect Soilmotes ride the same Wicked Device API as the eggs, but the grouped
@@ -372,13 +388,34 @@ export function SensorsPage() {
     { status: 'loading' } | { status: 'error' } | { status: 'ready'; raw: Record<string, unknown> }
   >({ status: 'loading' });
   const [unit, setUnit] = useState<'C' | 'F'>('F');
-  const [tab, setTab] = useState<'air' | 'soil'>(() => {
-    try { return sessionStorage.getItem('sensor-tab') === 'soil' ? 'soil' : 'air'; } catch { return 'air'; }
-  });
-  const pickTab = (t: 'air' | 'soil') => {
-    setTab(t);
-    try { sessionStorage.setItem('sensor-tab', t); } catch { /* storage blocked: tab just won't persist */ }
-  };
+  // the globe is the whole page; a sensor's readings exist only once it is picked
+  const [selected, setSelected] = useState<string | null>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [isMobile] = useState(() => window.matchMedia('(max-width: 720px)').matches);
+  const [headerH, setHeaderH] = useState(146);
+  useEffect(() => {
+    const bar = document.querySelector('.site-header')?.parentElement;
+    if (!bar) return;
+    const ro = new ResizeObserver(([e]) => setHeaderH(e.contentRect.height));
+    ro.observe(bar);
+    return () => ro.disconnect();
+  }, []);
+  const pick = (id: string | null) => setSelected(id);
+  // every probe on one globe - the air/soil split is carried by the pin colour
+  // rather than by a tab, so the network reads as one network
+  const sites: GlobeSite[] = useMemo(() => [
+    ...EGGS.map((e) => ({ id: e.id, name: e.name, sub: e.location, tone: AIR, ...dm(e.coords) })),
+    ...SOILMOTES.map((m) => ({ id: m.id, name: m.name, sub: m.location, tone: SOIL, ...dm(m.coords) })),
+    ...RETIRED.map((r) => ({ id: r.name, name: r.name, sub: `Retired ${r.to}`, tone: SOIL, retired: true, ...dm(r.coords) })),
+  ], []);
+  const site = sites.find((x) => x.id === selected) ?? null;
+  const egg = EGGS.find((e) => e.id === selected) ?? null;
+  const mote = SOILMOTES.find((m) => m.id === selected) ?? null;
+  const retired = RETIRED.find((r) => r.name === selected) ?? null;
+  // the readings drop in under the globe, so bring them into view on a pick
+  useEffect(() => {
+    if (selected && isMobile) panelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [selected, isMobile]);
   const [soil, setSoil] = useState<
     { status: 'loading' } | { status: 'error' } | { status: 'ready'; raw: Record<string, unknown> }
   >({ status: 'loading' });
@@ -444,91 +481,100 @@ export function SensorsPage() {
     [soilLife],
   );
 
-  return (
-    <section style={SUBPAGE}>
-      <div style={{ maxWidth: 1180, margin: '0 auto' }}>
-      <h2 style={H2}>Active Sensors</h2>
-      {/* the °C/°F toggle overlays the tab row; it only applies to the egg
-          temperature panels, so it rides the air tab */}
-      <div style={{ position: 'relative', marginTop: 32 }}>
-      <div style={{ display: 'inline-flex', border: `2px solid ${tab === 'soil' ? '#c1703f' : '#6d9dcd'}`, overflow: 'hidden' }}>
-        {([['air', 'Air Quality'], ['soil', 'Soil Moisture']] as const).map(([id, label]) => (
-          <button key={id} onClick={() => pickTab(id)} style={{ appearance: 'none', border: 'none', cursor: 'pointer', padding: '10px 22px', fontFamily: RESIPLE, fontSize: 13, letterSpacing: '0.12em', textTransform: 'uppercase', background: tab === id ? (id === 'soil' ? '#c1703f' : '#6d9dcd') : 'transparent', color: tab === id ? '#0e141c' : '#7c909b' }}>
-            {label}
-          </button>
-        ))}
-      </div>
-      {tab === 'air' && EGGS.map((egg) => {
-        const series = parsed[egg.id];
-        return (
-          <details key={egg.id} open style={{ background: '#141c26', border: '1px solid #6d9dcd', padding: 'clamp(20px,3.5vw,36px)', marginTop: 24 }}>
-            <summary style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '8px 18px' }}>
-              <span className="chev" style={{ color: '#7c909b', alignSelf: 'center' }} />
-              <h3 style={{ fontFamily: MANTI, fontWeight: 700, fontSize: 'clamp(24px,3vw,32px)', letterSpacing: '-0.015em', margin: 0 }}>{egg.name}</h3>
-              <span style={{ fontFamily: RESIPLE, fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#7c909b' }}>{egg.location}</span>
-            </summary>
-            <div style={{ marginTop: 28 }}>
-              {state.status === 'loading' ? (
-                <div style={{ fontFamily: RESIPLE, fontSize: 14.5, color: '#7c909b' }}>Contacting the egg…</div>
-              ) : series.length === 0 ? (
-                <div style={{ fontFamily: RESIPLE, fontSize: 14.5, color: '#7c909b' }}>The sensor feed is offline right now. Check back soon.</div>
-              ) : (
-                <EggCharts series={series} unit={unit} />
-              )}
-            </div>
-          </details>
-        );
-      })}
-      {tab === 'soil' && SOILMOTES.map((mote) => {
+  const accent = retired || mote ? SOIL : AIR;
+  const meta = egg ? `${egg.location} ${egg.coords}`
+    : mote ? `${mote.location} ${mote.coords}`
+    : retired ? `Active: (${retired.from} - ${retired.to}) | Coords: ${retired.coords}`
+    : '';
+
+  const readings = !site ? null : (
+    <>
+      {egg && (
+        state.status === 'loading' ? <Note>Contacting the egg&hellip;</Note>
+        : parsed[egg.id].length === 0 ? <Note>The sensor feed is offline right now. Check back soon.</Note>
+        : <EggCharts series={parsed[egg.id]} unit={unit} />
+      )}
+      {mote && (() => {
         // 0% is a non-reading (probe out of soil), not data
-        const pts = soilParsed[mote.id].find((s) => s.key === 'soilmoisture')?.points.filter((p) => p.v !== 0);
-        return (
-          <details key={mote.id} open style={{ background: '#141c26', border: '1px solid #c1703f', padding: 'clamp(20px,3.5vw,36px)', marginTop: 24 }}>
-            <summary style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '8px 18px' }}>
-              <span className="chev" style={{ color: '#7c909b', alignSelf: 'center' }} />
-              <h3 style={{ fontFamily: MANTI, fontWeight: 700, fontSize: 'clamp(24px,3vw,32px)', letterSpacing: '-0.015em', margin: 0 }}>{mote.name}</h3>
-              <span style={{ fontFamily: RESIPLE, fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#7c909b' }}>{mote.location} {mote.coords}</span>
-            </summary>
-            <div style={{ marginTop: 28 }}>
-              {soil.status === 'loading' ? (
-                <div style={{ fontFamily: RESIPLE, fontSize: 14.5, color: '#7c909b' }}>Contacting the probe…</div>
-              ) : !pts || pts.length < 2 ? (
-                <div style={{ fontFamily: RESIPLE, fontSize: 14.5, color: '#7c909b' }}>The sensor feed is offline right now. Check back soon.</div>
-              ) : (
-                <SoilCharts points={pts} lifetime={soilLifeParsed[mote.id].find((s) => s.key === 'soilmoisture')?.points.filter((p) => p.v !== 0 && p.t >= mote.lifeFrom)} />
-              )}
-            </div>
-          </details>
-        );
-      })}
-      {tab === 'soil' && (
-        <div style={{ marginTop: 40 }}>
-          <div style={{ fontFamily: RESIPLE, fontSize: 13, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#7c909b' }}>Inactive Sensors</div>
-          {RETIRED.map((r) => (
-            <details key={r.name} open style={{ background: '#141c26', border: '1px solid rgba(193,112,63,0.5)', padding: 'clamp(20px,3.5vw,36px)', marginTop: 24 }}>
-              <summary style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '8px 18px' }}>
-                <span className="chev" style={{ color: '#7c909b', alignSelf: 'center' }} />
-                <h3 style={{ fontFamily: MANTI, fontWeight: 700, fontSize: 'clamp(24px,3vw,32px)', letterSpacing: '-0.015em', margin: 0 }}>{r.name}</h3>
-                <span style={{ fontFamily: RESIPLE, fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#7c909b' }}>Active: ({r.from} - {r.to}) | Coords: {r.coords}</span>
-              </summary>
-              <div style={{ marginTop: 28 }}>
-                <SensorChart label="Lifetime" unit="% VWC" points={ARCHIVE[r.name]} y0={0} minSpan={20} accent="#c1703f" />
+        const pts = soilParsed[mote.id].find((x) => x.key === 'soilmoisture')?.points.filter((q) => q.v !== 0);
+        return soil.status === 'loading' ? <Note>Contacting the probe&hellip;</Note>
+          : !pts || pts.length < 2 ? <Note>The sensor feed is offline right now. Check back soon.</Note>
+          : <SoilCharts points={pts} lifetime={soilLifeParsed[mote.id].find((x) => x.key === 'soilmoisture')?.points.filter((q) => q.v !== 0 && q.t >= mote.lifeFrom)} />;
+      })()}
+      {retired && <SensorChart label="Lifetime" unit="% VWC" points={ARCHIVE[retired.name]} y0={0} minSpan={20} accent={SOIL} />}
+    </>
+  );
+
+  const unitToggle = egg ? (
+    <span style={{ display: 'inline-flex', border: `2px solid ${AIR}`, overflow: 'hidden' }}>
+      {(['F', 'C'] as const).map((u) => (
+        <button key={u} onClick={() => setUnit(u)} style={{ appearance: 'none', border: 'none', cursor: 'pointer', padding: '5px 12px', fontFamily: RESIPLE, fontSize: 12.5, letterSpacing: '0.1em', background: unit === u ? AIR : 'transparent', color: unit === u ? '#0e141c' : '#7c909b' }}>
+          &deg;{u}
+        </button>
+      ))}
+    </span>
+  ) : null;
+
+  // ---- phones: no globe, so the page keeps its ordinary stacked shape ----
+  if (isMobile) {
+    return (
+      <section style={SUBPAGE}>
+        <div style={{ maxWidth: 1180, margin: '0 auto' }}>
+          <h2 style={H2}>Active Sensors</h2>
+          <SensorGlobe sites={sites} selectedId={selected} onSelect={pick} accent={accent} />
+          <div ref={panelRef} style={{ scrollMarginTop: 96 }}>
+            {site && (
+              <div style={{ background: '#141c26', border: `1px solid ${accent}`, padding: 'clamp(20px,3.5vw,36px)', marginTop: 24 }}>
+                <h3 style={{ fontFamily: MANTI, fontWeight: 700, fontSize: 'clamp(24px,3vw,32px)', margin: 0 }}>{site.name}</h3>
+                <div style={{ fontFamily: RESIPLE, fontSize: 12.5, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#7c909b', marginTop: 8 }}>{meta}</div>
+                <div style={{ marginTop: 18 }}>{unitToggle}</div>
+                <div style={{ marginTop: 24 }}>{readings}</div>
               </div>
-            </details>
-          ))}
+            )}
+          </div>
         </div>
-      )}
-      {tab === 'air' && (
-        <div style={{ position: 'absolute', top: 0, right: 0, display: 'inline-flex', border: '2px solid #6d9dcd', overflow: 'hidden' }}>
-          {(['F', 'C'] as const).map((u) => (
-            <button key={u} onClick={() => setUnit(u)} style={{ appearance: 'none', border: 'none', cursor: 'pointer', padding: '8px 18px', fontFamily: RESIPLE, fontSize: 14, letterSpacing: '0.1em', background: unit === u ? '#6d9dcd' : 'transparent', color: unit === u ? '#0e141c' : '#7c909b' }}>
-              °{u}
-            </button>
-          ))}
+      </section>
+    );
+  }
+
+  // ---- the globe is the page; the readings float beside their pin ----
+  const cardEl = !site ? null : (
+    <div style={{
+      width: 'clamp(330px, 27vw, 430px)', maxHeight: '64vh', display: 'flex', flexDirection: 'column',
+      background: 'rgba(16,23,32,0.95)', backdropFilter: 'blur(14px)',
+      border: `1px solid ${accent}`, boxShadow: '0 18px 50px rgba(0,0,0,0.6)',
+    }}>
+      <div style={{ padding: '14px 16px 12px', borderBottom: '1px solid rgba(255,255,255,0.09)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <h3 style={{ fontFamily: MANTI, fontWeight: 700, fontSize: 21, letterSpacing: '-0.015em', margin: 0, flex: 1 }}>{site.name}</h3>
+          {unitToggle}
+          <button onClick={() => pick(null)} aria-label="Close readings" style={{ appearance: 'none', cursor: 'pointer', width: 26, height: 26, lineHeight: 1, border: '1px solid rgba(255,255,255,0.22)', background: 'transparent', color: '#a9bcc6', fontFamily: RESIPLE, fontSize: 14 }}>
+            &times;
+          </button>
         </div>
-      )}
+        <div style={{ fontFamily: RESIPLE, fontSize: 11.5, letterSpacing: '0.09em', textTransform: 'uppercase', color: '#7c909b', marginTop: 8 }}>{meta}</div>
       </div>
+      <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>{readings}</div>
+    </div>
+  );
+
+  return (
+    <section style={{ position: 'relative', zIndex: 2, background: '#0e141c', height: '100dvh', overflow: 'hidden' }}>
+      {/* the stage starts under the navbar rather than running behind it */}
+      <div style={{ position: 'absolute', top: headerH, left: 0, right: 0, bottom: 0 }}>
+        <SensorGlobe sites={sites} selectedId={selected} onSelect={pick} accent={accent} card={cardEl} />
       </div>
+      {/* the page title rides over the globe; the globe itself is the page */}
+      <h2 style={{
+        ...H2, position: 'absolute', top: headerH + 26, left: 'clamp(16px,3vw,42px)',
+        margin: 0, zIndex: 4, pointerEvents: 'none', textShadow: '0 2px 22px rgba(14,20,28,0.9)',
+      }}>
+        Active Sensors
+      </h2>
     </section>
   );
+}
+
+function Note({ children }: { children: ReactNode }) {
+  return <div style={{ fontFamily: RESIPLE, fontSize: 14.5, color: '#7c909b' }}>{children}</div>;
 }

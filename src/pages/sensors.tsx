@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { RESIPLE, MANTI, H2, SUBPAGE } from '../styles/theme';
+import soilArchive from '../data/soil-archive.json';
 
 // ACTIVE SENSORS - the /api/aqi proxy (server.mjs) passes through the Egg API's
 // reduced+grouped JSON. Shape-tolerant on purpose: a portal-side format tweak
@@ -91,6 +92,7 @@ const fmtVal = (v: number) => (Math.abs(v) >= 100 ? Math.round(v).toLocaleString
 const subPM = (label: string) => (label.startsWith('PM') ? <>PM<sub style={{ fontSize: '0.72em' }}>{label.slice(2)}</sub></> : label);
 const fmtTime = (t: number) => new Date(t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 const fmtDay = (t: number) => new Date(t).toLocaleDateString([], { month: 'short', day: 'numeric' });
+const fmtMoYr = (t: number) => new Date(t).toLocaleDateString([], { month: 'short', year: 'numeric' });
 const fmtTick = (v: number) => (Math.abs(v % 1) < 1e-9 ? Math.round(v).toLocaleString() : v.toFixed(1));
 
 // plain white figure plate inset into the dark page: the chrome wears the brand,
@@ -112,9 +114,9 @@ function niceTicks(lo: number, hi: number, n = 4): number[] {
 }
 
 const CHART_H = 172;
-const M = { l: 46, r: 56, t: 10, b: 24 }; // right margin holds the direct end label
+const M = { l: 46, r: 18, t: 10, b: 24 };
 
-function SensorChart({ label, unit, points, y0, minSpan, epaBands, rating }: { label: string; unit: string; points: EggPoint[]; y0?: number; minSpan?: number; epaBands?: boolean; rating?: Rating }) {
+function SensorChart({ label, unit, points, y0, minSpan, epaBands, rating, accent = '#6d9dcd' }: { label: string; unit: string; points: EggPoint[]; y0?: number; minSpan?: number; epaBands?: boolean; rating?: Rating; accent?: string }) {
   const [hover, setHover] = useState<number | null>(null);
   // real pixel coordinates: the path is regenerated at the measured width, so the
   // geometry is never non-uniformly stretched and slope means rate of change
@@ -151,18 +153,30 @@ function SensorChart({ label, unit, points, y0, minSpan, epaBands, rating }: { l
   const plotH = CHART_H - M.t - M.b;
   const X = (t: number) => M.l + ((t - t0) / tspan) * plotW;
   const Y = (v: number) => M.t + (1 - (v - lo) / (hi - lo)) * plotH;
-  const path = points.map((p, i) => `${i ? 'L' : 'M'}${X(p.t).toFixed(1)},${Y(p.v).toFixed(1)}`).join('');
+  // no line across a data gap: a step far beyond the series' own cadence starts
+  // a new segment, so outages read as blank stretches
+  const dts = points.slice(1).map((p, i) => p.t - points[i].t).sort((a, b) => a - b);
+  const gapMs = 5 * (dts[Math.floor(dts.length / 2)] || Infinity);
+  const path = points.map((p, i) => `${i && p.t - points[i - 1].t <= gapMs ? 'L' : 'M'}${X(p.t).toFixed(1)},${Y(p.v).toFixed(1)}`).join('');
   const cur = points[points.length - 1];
   const hp = hover != null ? points[hover] : null;
   const ticks = niceTicks(lo, hi);
 
-  // x ticks on 6h boundaries; the midnight rule runs the full plot and carries the date
+  // x ticks on 6h boundaries; the midnight rule runs the full plot and carries the
+  // date. Past ~3 days the 6h grid overcrowds, so ticks step in whole days instead.
   const xticks: { t: number; midnight: boolean }[] = [];
-  const step6h = 6 * 3600_000;
+  const spanDays = tspan / 86_400_000;
   const first = new Date(t0);
   first.setMinutes(0, 0, 0);
-  first.setHours(Math.ceil(first.getHours() / 6) * 6);
-  for (let t = first.getTime(); t <= t1; t += step6h) xticks.push({ t, midnight: new Date(t).getHours() === 0 });
+  if (spanDays > 3) {
+    const stepDays = Math.ceil(spanDays / 6);
+    first.setHours(24); // next midnight
+    for (let d = new Date(first); d.getTime() <= t1; d.setDate(d.getDate() + stepDays)) xticks.push({ t: d.getTime(), midnight: true });
+  } else {
+    const step6h = 6 * 3600_000;
+    first.setHours(Math.ceil(first.getHours() / 6) * 6);
+    for (let t = first.getTime(); t <= t1; t += step6h) xticks.push({ t, midnight: new Date(t).getHours() === 0 });
+  }
 
   const onMove = (e: React.PointerEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -173,7 +187,7 @@ function SensorChart({ label, unit, points, y0, minSpan, epaBands, rating }: { l
   };
 
   return (
-    <div style={{ background: PLATE.paper, border: '3px solid #086727', padding: '16px 18px 12px' }}>
+    <div style={{ background: PLATE.paper, border: `3px solid ${accent}`, padding: '16px 18px 12px' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, minWidth: 0 }}>
           <div style={{ fontFamily: RESIPLE, fontSize: 12, letterSpacing: '0.1em', textTransform: 'uppercase', color: PLATE.ink, whiteSpace: 'nowrap' }}>
@@ -198,7 +212,7 @@ function SensorChart({ label, unit, points, y0, minSpan, epaBands, rating }: { l
         onPointerLeave={() => setHover(null)}
         style={{ position: 'relative', marginTop: 8, touchAction: 'pan-y' }}
       >
-        <svg width={w || '100%'} height={CHART_H} style={{ display: 'block' }} aria-label={`${label}, last 24 hours`}>
+        <svg width={w || '100%'} height={CHART_H} style={{ display: 'block' }} aria-label={`${label} history`}>
           {w > 0 && (
             <>
               {ticks.map((v) => (
@@ -211,7 +225,7 @@ function SensorChart({ label, unit, points, y0, minSpan, epaBands, rating }: { l
                 <g key={t}>
                   <line x1={X(t)} x2={X(t)} y1={M.t + plotH} y2={M.t + plotH + 4} stroke={PLATE.rule} strokeWidth={1} />
                   <text x={X(t)} y={CHART_H - 7} fontSize={10} fill={PLATE.muted} textAnchor="middle" fontFamily="Resiple, sans-serif">
-                    {midnight ? fmtDay(t) : fmtTime(t)}
+                    {spanDays > 300 ? fmtMoYr(t) : midnight ? fmtDay(t) : fmtTime(t)}
                   </text>
                 </g>
               ))}
@@ -219,8 +233,6 @@ function SensorChart({ label, unit, points, y0, minSpan, epaBands, rating }: { l
               <line x1={M.l} x2={M.l} y1={M.t} y2={M.t + plotH} stroke={PLATE.rule} strokeWidth={1.2} />
               <line x1={M.l} x2={M.l + plotW} y1={M.t + plotH} y2={M.t + plotH} stroke={PLATE.rule} strokeWidth={1.2} />
               <path d={path} fill="none" stroke={PLATE.ink} strokeWidth={1.4} />
-              {/* direct end label: the latest value sits where the trace ends */}
-              <text x={X(cur.t) + 7} y={Y(cur.v)} fontSize={13} fontWeight={700} fill={PLATE.ink} dominantBaseline="middle" fontFamily="Resiple, sans-serif">{fmtVal(cur.v)}</text>
               {hp && (
                 <>
                   <line x1={X(hp.t)} x2={X(hp.t)} y1={M.t} y2={M.t + plotH} stroke={PLATE.ink} strokeWidth={0.8} opacity={0.35} />
@@ -240,11 +252,72 @@ function SensorChart({ label, unit, points, y0, minSpan, epaBands, rating }: { l
   );
 }
 
+// one Soilmote card: the same soilmoisture trace at three zooms. Month tells the
+// story, day answers "is it wet right now". Battery voltage is in the feed too,
+// deliberately not charted.
+// a chart only needs ~1 point per plot pixel: keep the first sample per bucket,
+// same idiom as eggSeries' 5-minute pass
+function thin(pts: EggPoint[]): EggPoint[] {
+  const b = (pts[pts.length - 1].t - pts[0].t) / 1500;
+  return b <= 300_000 ? pts : pts.filter((p, i, a) => i === 0 || Math.floor(p.t / b) !== Math.floor(a[i - 1].t / b));
+}
+
+function SoilCharts({ points, lifetime }: { points: EggPoint[]; lifetime?: EggPoint[] }) {
+  const newest = points[points.length - 1].t;
+  const live = Date.now() - newest < 75 * 60_000; // ~30 min LoRa cadence, 2 missed reports = offline
+  // lifetime pops in when the slow archive fetch lands
+  const windows = [
+    { label: 'Lifetime', pts: lifetime ?? [] },
+    { label: 'Month', pts: points.filter((p) => p.t >= newest - 31 * 86_400_000) },
+    { label: 'Week', pts: points.filter((p) => p.t >= newest - 7 * 86_400_000) },
+    { label: 'Day', pts: points.filter((p) => p.t >= newest - 86_400_000) },
+  ]
+    .map((w) => ({ ...w, pts: w.pts.length > 1 ? thin(w.pts) : w.pts }))
+    .filter((w) => w.pts.length > 1);
+  return (
+    <div>
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontFamily: RESIPLE, fontSize: 12, letterSpacing: '0.1em', textTransform: 'uppercase', color: live ? '#4fae7d' : '#7c909b' }}>
+        <span style={{ width: 8, height: 8, borderRadius: 999, background: live ? '#4fae7d' : '#5f7078' }} />
+        {live ? 'Live' : 'Offline'} updated {fmtTime(newest)}
+      </div>
+      <p style={{ fontFamily: RESIPLE, fontSize: 13.5, color: '#a9bcc6', lineHeight: 1.65, maxWidth: 640, margin: '18px 0 0' }}>
+        The probe reports volumetric water content, the fraction of the soil volume that is
+        water. Readings shift with soil compaction, so the trend matters more than any single number.
+      </p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(400px,100%),1fr))', gap: 18, marginTop: 20 }}>
+        {windows.map((w) => (
+          <SensorChart key={w.label} label={w.label} unit="% VWC" points={w.pts} y0={0} minSpan={20} accent="#c1703f" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // one card per egg. Ids are the slot names /api/aqi assigns in EGG_SERIAL order,
 // so adding an egg = append its serial to EGG_SERIAL on the server + an entry here.
 const EGGS = [
   { id: 'egg1', name: 'Snee Egg', location: 'Snee Hall roof' },
   { id: 'egg2', name: 'ELL Egg', location: 'GeoData workbench' },
+];
+
+// Zynect Soilmotes ride the same Wicked Device API as the eggs, but the grouped
+// feed is keyed by internal serial (the portal name, e.g. GRASP, is an alias).
+// That API needs no key and allows any origin, so the client fetches it directly.
+const SOILMOTES = [
+  { id: 'egge82d1055169daf2b', name: 'GRASP', location: 'Gamefarm', lifeFrom: Date.parse('2025-05-14T00:00:00Z'), coords: "N 42\u00b0 27.060' W 76\u00b0 26.863'" },
+];
+// retired probes: their history never changes, so it's cataloged once into
+// soil-archive.json (thinned to ~900 pts each) instead of refetched from the
+// slow archive API. NINJA's range set by the team; the rest are as probed.
+const ARCHIVE: Record<string, EggPoint[]> = Object.fromEntries(
+  // a 0% reading means the probe wasn't reading, not dry soil - drop them
+  Object.entries(soilArchive as unknown as Record<string, [number, number][]>).map(([k, v]) => [k, v.map(([t, x]) => ({ t, v: x })).filter((p) => p.v !== 0)]),
+);
+const RETIRED = [
+  { coords: "N 42\u00b0 26.924' W 76\u00b0 26.812'", name: 'CENSE', from: '3/18/25', to: '6/18/26' },
+  { coords: "N 42\u00b0 26.926' W 76\u00b0 26.757'", name: 'NINJA', from: '3/21/26', to: '6/3/26' },
+  { coords: "N 42\u00b0 27.032' W 76\u00b0 26.729'", name: 'CAMPS', from: '4/18/25', to: '4/19/26' },
+  { coords: "N 42\u00b0 26.949' W 76\u00b0 26.816'", name: 'GLITZ', from: '3/18/25', to: '4/13/26' },
 ];
 
 function EggCharts({ series, unit }: { series: { key: string; points: EggPoint[] }[]; unit: 'C' | 'F' }) {
@@ -299,6 +372,52 @@ export function SensorsPage() {
     { status: 'loading' } | { status: 'error' } | { status: 'ready'; raw: Record<string, unknown> }
   >({ status: 'loading' });
   const [unit, setUnit] = useState<'C' | 'F'>('F');
+  const [tab, setTab] = useState<'air' | 'soil'>(() => {
+    try { return sessionStorage.getItem('sensor-tab') === 'soil' ? 'soil' : 'air'; } catch { return 'air'; }
+  });
+  const pickTab = (t: 'air' | 'soil') => {
+    setTab(t);
+    try { sessionStorage.setItem('sensor-tab', t); } catch { /* storage blocked: tab just won't persist */ }
+  };
+  const [soil, setSoil] = useState<
+    { status: 'loading' } | { status: 'error' } | { status: 'ready'; raw: Record<string, unknown> }
+  >({ status: 'loading' });
+
+  useEffect(() => {
+    let alive = true;
+    const url =
+      `https://zynect.com/api/v2/messages/device/${SOILMOTES.map((m) => m.id).join(',')}` +
+      `?dur=P1M&end-date=${new Date().toISOString()}&reduced=1&grouped=1`;
+    fetch(url)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((raw) => alive && setSoil({ status: 'ready', raw: (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown> }))
+      .catch(() => alive && setSoil({ status: 'error' }));
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const [soilLife, setSoilLife] = useState<Record<string, unknown>>({});
+  useEffect(() => {
+    let alive = true;
+    // the lifetime archive takes Zynect ~a minute to assemble, so it comes through
+    // the server proxy (long cache) and the charts pop in when it lands
+    fetch('/api/soil-lifetime')
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .catch(() => {
+        // no proxy running (plain vite dev): fetch the slow archive straight from
+        // Zynect. Takes upstream ~a minute; the chart pops in when it lands.
+        const url =
+          `https://zynect.com/api/v2/messages/device/${SOILMOTES.map((m) => m.id).join(',')}` +
+          `?dur=P2Y&end-date=${new Date().toISOString()}&reduced=1&grouped=1`;
+        return fetch(url).then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))));
+      })
+      .then((raw) => alive && setSoilLife((raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -316,47 +435,98 @@ export function SensorsPage() {
     () => Object.fromEntries(EGGS.map((egg) => [egg.id, state.status === 'ready' ? eggSeries(state.raw[egg.id]) : []])),
     [state],
   );
+  const soilParsed = useMemo(
+    () => Object.fromEntries(SOILMOTES.map((m) => [m.id, soil.status === 'ready' ? eggSeries(soil.raw[m.id]) : []])),
+    [soil],
+  );
+  const soilLifeParsed = useMemo(
+    () => Object.fromEntries(SOILMOTES.map((m) => [m.id, eggSeries(soilLife[m.id])])),
+    [soilLife],
+  );
 
   return (
     <section style={SUBPAGE}>
       <div style={{ maxWidth: 1180, margin: '0 auto' }}>
       <h2 style={H2}>Active Sensors</h2>
-      {/* the °C/°F toggle sits OUTSIDE the <details>, overlaid on the summary
-          row - inside it, a near-miss click collapses the whole section */}
+      {/* the °C/°F toggle overlays the tab row; it only applies to the egg
+          temperature panels, so it rides the air tab */}
       <div style={{ position: 'relative', marginTop: 32 }}>
-      <details open>
-        <summary style={{ display: 'inline-flex', alignItems: 'center', gap: 10, minHeight: 37, fontFamily: RESIPLE, fontSize: 14, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#6d9dcd' }}>
-          Air Quality
-        </summary>
-        {EGGS.map((egg) => {
-          const series = parsed[egg.id];
-          return (
-            <details key={egg.id} open style={{ background: '#141c26', border: '1px solid #6d9dcd', padding: 'clamp(20px,3.5vw,36px)', marginTop: 24 }}>
-              <summary style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '8px 18px' }}>
-                <span className="chev" style={{ color: '#7c909b', alignSelf: 'center' }} />
-                <h3 style={{ fontFamily: MANTI, fontWeight: 700, fontSize: 'clamp(24px,3vw,32px)', letterSpacing: '-0.015em', margin: 0 }}>{egg.name}</h3>
-                <span style={{ fontFamily: RESIPLE, fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#7c909b' }}>{egg.location}</span>
-              </summary>
-              <div style={{ marginTop: 28 }}>
-                {state.status === 'loading' ? (
-                  <div style={{ fontFamily: RESIPLE, fontSize: 14.5, color: '#7c909b' }}>Contacting the egg…</div>
-                ) : series.length === 0 ? (
-                  <div style={{ fontFamily: RESIPLE, fontSize: 14.5, color: '#7c909b' }}>The sensor feed is offline right now. Check back soon.</div>
-                ) : (
-                  <EggCharts series={series} unit={unit} />
-                )}
-              </div>
-            </details>
-          );
-        })}
-      </details>
-      <div style={{ position: 'absolute', top: 0, right: 0, display: 'inline-flex', border: '2px solid rgba(255,255,255,0.3)', overflow: 'hidden' }}>
-        {(['F', 'C'] as const).map((u) => (
-          <button key={u} onClick={() => setUnit(u)} style={{ appearance: 'none', border: 'none', cursor: 'pointer', padding: '8px 18px', fontFamily: RESIPLE, fontSize: 14, letterSpacing: '0.1em', background: unit === u ? '#6d9dcd' : 'transparent', color: unit === u ? '#0e141c' : '#7c909b' }}>
-            °{u}
+      <div style={{ display: 'inline-flex', border: '2px solid rgba(255,255,255,0.3)', overflow: 'hidden' }}>
+        {([['air', 'Air Quality'], ['soil', 'Soil Moisture']] as const).map(([id, label]) => (
+          <button key={id} onClick={() => pickTab(id)} style={{ appearance: 'none', border: 'none', cursor: 'pointer', padding: '10px 22px', fontFamily: RESIPLE, fontSize: 13, letterSpacing: '0.12em', textTransform: 'uppercase', background: tab === id ? (id === 'soil' ? '#c1703f' : '#6d9dcd') : 'transparent', color: tab === id ? '#0e141c' : '#7c909b' }}>
+            {label}
           </button>
         ))}
       </div>
+      {tab === 'air' && EGGS.map((egg) => {
+        const series = parsed[egg.id];
+        return (
+          <details key={egg.id} open style={{ background: '#141c26', border: '1px solid #6d9dcd', padding: 'clamp(20px,3.5vw,36px)', marginTop: 24 }}>
+            <summary style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '8px 18px' }}>
+              <span className="chev" style={{ color: '#7c909b', alignSelf: 'center' }} />
+              <h3 style={{ fontFamily: MANTI, fontWeight: 700, fontSize: 'clamp(24px,3vw,32px)', letterSpacing: '-0.015em', margin: 0 }}>{egg.name}</h3>
+              <span style={{ fontFamily: RESIPLE, fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#7c909b' }}>{egg.location}</span>
+            </summary>
+            <div style={{ marginTop: 28 }}>
+              {state.status === 'loading' ? (
+                <div style={{ fontFamily: RESIPLE, fontSize: 14.5, color: '#7c909b' }}>Contacting the egg…</div>
+              ) : series.length === 0 ? (
+                <div style={{ fontFamily: RESIPLE, fontSize: 14.5, color: '#7c909b' }}>The sensor feed is offline right now. Check back soon.</div>
+              ) : (
+                <EggCharts series={series} unit={unit} />
+              )}
+            </div>
+          </details>
+        );
+      })}
+      {tab === 'soil' && SOILMOTES.map((mote) => {
+        // 0% is a non-reading (probe out of soil), not data
+        const pts = soilParsed[mote.id].find((s) => s.key === 'soilmoisture')?.points.filter((p) => p.v !== 0);
+        return (
+          <details key={mote.id} open style={{ background: '#141c26', border: '1px solid #c1703f', padding: 'clamp(20px,3.5vw,36px)', marginTop: 24 }}>
+            <summary style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '8px 18px' }}>
+              <span className="chev" style={{ color: '#7c909b', alignSelf: 'center' }} />
+              <h3 style={{ fontFamily: MANTI, fontWeight: 700, fontSize: 'clamp(24px,3vw,32px)', letterSpacing: '-0.015em', margin: 0 }}>{mote.name}</h3>
+              <span style={{ fontFamily: RESIPLE, fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#7c909b' }}>{mote.location} {mote.coords}</span>
+            </summary>
+            <div style={{ marginTop: 28 }}>
+              {soil.status === 'loading' ? (
+                <div style={{ fontFamily: RESIPLE, fontSize: 14.5, color: '#7c909b' }}>Contacting the probe…</div>
+              ) : !pts || pts.length < 2 ? (
+                <div style={{ fontFamily: RESIPLE, fontSize: 14.5, color: '#7c909b' }}>The sensor feed is offline right now. Check back soon.</div>
+              ) : (
+                <SoilCharts points={pts} lifetime={soilLifeParsed[mote.id].find((s) => s.key === 'soilmoisture')?.points.filter((p) => p.v !== 0 && p.t >= mote.lifeFrom)} />
+              )}
+            </div>
+          </details>
+        );
+      })}
+      {tab === 'soil' && (
+        <div style={{ marginTop: 40 }}>
+          <div style={{ fontFamily: RESIPLE, fontSize: 13, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#7c909b' }}>Inactive Sensors</div>
+          {RETIRED.map((r) => (
+            <details key={r.name} open style={{ background: '#141c26', border: '1px solid rgba(193,112,63,0.5)', padding: 'clamp(20px,3.5vw,36px)', marginTop: 24 }}>
+              <summary style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '8px 18px' }}>
+                <span className="chev" style={{ color: '#7c909b', alignSelf: 'center' }} />
+                <h3 style={{ fontFamily: MANTI, fontWeight: 700, fontSize: 'clamp(24px,3vw,32px)', letterSpacing: '-0.015em', margin: 0 }}>{r.name}</h3>
+                <span style={{ fontFamily: RESIPLE, fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#7c909b' }}>Active: ({r.from} - {r.to}) | Coords: {r.coords}</span>
+              </summary>
+              <div style={{ marginTop: 28 }}>
+                <SensorChart label="Lifetime" unit="% VWC" points={ARCHIVE[r.name]} y0={0} minSpan={20} accent="#c1703f" />
+              </div>
+            </details>
+          ))}
+        </div>
+      )}
+      {tab === 'air' && (
+        <div style={{ position: 'absolute', top: 0, right: 0, display: 'inline-flex', border: '2px solid rgba(255,255,255,0.3)', overflow: 'hidden' }}>
+          {(['F', 'C'] as const).map((u) => (
+            <button key={u} onClick={() => setUnit(u)} style={{ appearance: 'none', border: 'none', cursor: 'pointer', padding: '8px 18px', fontFamily: RESIPLE, fontSize: 14, letterSpacing: '0.1em', background: unit === u ? '#6d9dcd' : 'transparent', color: unit === u ? '#0e141c' : '#7c909b' }}>
+              °{u}
+            </button>
+          ))}
+        </div>
+      )}
       </div>
       </div>
     </section>

@@ -45,6 +45,27 @@ app.get('/api/aqi', async (_req, res) => {
   }
 });
 
+// the Soilmote lifetime archive: Zynect takes ~a minute to assemble it, so one
+// upstream fetch is shared by all visitors and refreshed every 6h. Serials must
+// match SOILMOTES in src/pages/sensors.tsx (internal ids, not portal aliases).
+const SOIL_SERIALS = ['egge82d1055169daf2b'];
+let soilLife = { t: 0, p: null };
+app.get('/api/soil-lifetime', async (_req, res) => {
+  if (!soilLife.p || Date.now() - soilLife.t > 6 * 3600_000) {
+    const url =
+      `https://zynect.com/api/v2/messages/device/${SOIL_SERIALS.join(',')}` +
+      `?dur=P2Y&end-date=${new Date().toISOString()}&reduced=1&grouped=1`;
+    soilLife = { t: Date.now(), p: fetch(url).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`upstream ${r.status}`)))) };
+    soilLife.p.catch(() => { soilLife.p = null; }); // failed fetch: next request retries
+  }
+  try {
+    res.set('cache-control', 'public, max-age=3600');
+    res.json(await soilLife.p);
+  } catch (err) {
+    res.status(502).json({ error: String(err) });
+  }
+});
+
 // serve the .br/.gz siblings scripts/compress.mjs emits at build time
 const DIST = path.resolve('dist');
 const COMPRESSIBLE = /\.(?:js|css|html|svg|json|glb)$/;
